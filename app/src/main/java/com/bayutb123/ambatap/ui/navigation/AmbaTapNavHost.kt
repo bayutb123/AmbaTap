@@ -8,6 +8,7 @@ import androidx.navigation.toRoute
 import com.bayutb123.ambatap.ui.editor.EditorScreen
 import com.bayutb123.ambatap.ui.home.HomeScreen
 import com.bayutb123.ambatap.ui.onboarding.OnboardingScreen
+import com.bayutb123.ambatap.ui.playground.PlaygroundScreen
 import com.bayutb123.ambatap.ui.settings.SettingsScreen
 
 @Composable
@@ -19,13 +20,17 @@ fun AmbaTapNavHost() {
                 onOpenSettings = { navController.navigate(SettingsRoute) },
                 onOpenOnboarding = { navController.navigate(OnboardingRoute) },
                 onOpenMacro = { id -> navController.navigate(EditorRoute(id)) },
+                onOpenPlayground = { navController.navigate(PlaygroundRoute) },
             )
         }
         composable<OnboardingRoute> {
-            OnboardingScreen(onSkip = { navController.popBackStack() })
+            OnboardingScreen(onDone = { navController.popBackStack() })
         }
         composable<SettingsRoute> {
             SettingsScreen(onBack = { navController.popBackStack() })
+        }
+        composable<PlaygroundRoute> {
+            PlaygroundScreen(onBack = { navController.popBackStack() })
         }
         composable<EditorRoute> { entry ->
             EditorScreen(

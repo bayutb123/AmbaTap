@@ -13,3 +13,6 @@ data object SettingsRoute
 
 @Serializable
 data class EditorRoute(val macroId: Long)
+
+@Serializable
+data object PlaygroundRoute

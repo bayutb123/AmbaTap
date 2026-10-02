@@ -38,6 +38,7 @@ fun HomeScreen(
     onOpenSettings: () -> Unit,
     onOpenOnboarding: () -> Unit,
     onOpenMacro: (Long) -> Unit,
+    onOpenPlayground: () -> Unit,
     viewModel: HomeViewModel = hiltViewModel(),
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
@@ -46,6 +47,7 @@ fun HomeScreen(
         onOpenSettings = onOpenSettings,
         onOpenOnboarding = onOpenOnboarding,
         onOpenMacro = onOpenMacro,
+        onOpenPlayground = onOpenPlayground,
     )
 }
 
@@ -55,6 +57,7 @@ private fun HomeContent(
     onOpenSettings: () -> Unit,
     onOpenOnboarding: () -> Unit,
     onOpenMacro: (Long) -> Unit,
+    onOpenPlayground: () -> Unit,
 ) {
     Scaffold(containerColor = MaterialTheme.colorScheme.background) { innerPadding ->
         LazyColumn(
@@ -86,8 +89,13 @@ private fun HomeContent(
                     }
                 }
             }
+            if (!uiState.isLoading && !uiState.serviceConnected) {
+                item {
+                    ServiceBanner(onActivate = onOpenOnboarding)
+                }
+            }
             item {
-                ServiceBanner(onActivate = onOpenOnboarding)
+                PlaygroundCard(onClick = onOpenPlayground)
             }
             item {
                 Text(
@@ -112,7 +120,6 @@ private fun HomeContent(
     }
 }
 
-// TODO(Fase 1): tampilkan hanya saat layanan aksesibilitas belum aktif.
 @Composable
 private fun ServiceBanner(onActivate: () -> Unit) {
     Card(
@@ -137,6 +144,27 @@ private fun ServiceBanner(onActivate: () -> Unit) {
                 )
             }
             Button(onClick = onActivate) { Text("Aktifkan") }
+        }
+    }
+}
+
+@Composable
+private fun PlaygroundCard(onClick: () -> Unit) {
+    OutlinedCard(
+        onClick = onClick,
+        shape = RoundedCornerShape(16.dp),
+        modifier = Modifier.fillMaxWidth(),
+    ) {
+        Column(
+            modifier = Modifier.padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(2.dp),
+        ) {
+            Text("Playground", style = MaterialTheme.typography.titleMedium)
+            Text(
+                "Uji akurasi tap & swipe dengan macro contoh",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
         }
     }
 }
@@ -177,6 +205,7 @@ private fun HomePreview() {
             onOpenSettings = {},
             onOpenOnboarding = {},
             onOpenMacro = {},
+            onOpenPlayground = {},
         )
     }
 }

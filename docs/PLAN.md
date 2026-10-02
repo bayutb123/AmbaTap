@@ -269,11 +269,13 @@ siapkan juga opsi distribusi via GitHub Releases/F-Droid). Tambahkan juga pandua
 - [x] Perbarui `.gitignore` untuk Android (`build/`, `.gradle/`, `local.properties`, `*.iml`, `.idea/`).
 
 ### Fase 1 — Accessibility service & playback dasar (±3–4 hari)
-- [ ] `AmbaTapAccessibilityService` + config XML + `ServiceBridge`.
-- [ ] Layar onboarding & deteksi status service.
-- [ ] `GestureFactory` (Tap, LongPress, Swipe → `GestureDescription`).
-- [ ] `MacroPlayer` berbasis coroutine: play / pause / resume / stop, repeat, speed.
-- [ ] Layar Playground + macro hardcoded untuk uji.
+- [x] `AmbaTapAccessibilityService` + config XML + `ServiceBridge`.
+- [x] Layar onboarding & deteksi status service.
+- [x] `GestureFactory` (Tap, LongPress, Swipe → `GestureDescription`).
+      Belum: memecah gesture > `getMaxGestureDuration()` dengan `continueStroke()` (sekarang di-clamp).
+- [x] `MacroPlayer` berbasis coroutine: play / pause / resume / stop, repeat, speed.
+- [x] Layar Playground + macro hardcoded untuk uji.
+- [x] Emergency stop dasar: volume turun 2× saat macro aktif (dimajukan dari Fase 2).
 - **Selesai bila:** macro hardcoded bisa men-tap & swipe di app lain secara akurat.
 
 ### Fase 2 — Overlay & floating panel (±3 hari)
