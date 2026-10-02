@@ -84,6 +84,12 @@ object AmbaIcons {
         }
     }
 
+    val Minimize: ImageVector by lazy {
+        strokeIcon("Minimize") {
+            moveTo(6f, 12f); lineTo(18f, 12f)
+        }
+    }
+
     val Plus: ImageVector by lazy {
         strokeIcon("Plus") {
             moveTo(12f, 5f); lineTo(12f, 19f)

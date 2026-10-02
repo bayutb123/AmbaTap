@@ -6,10 +6,8 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
@@ -131,15 +129,16 @@ private fun LastActionToast(actions: List<MacroAction>, modifier: Modifier) {
     val action = actions.lastOrNull()
     if (visibleFor == null || action == null) return
 
-    Column(
-        verticalArrangement = Arrangement.spacedBy(2.dp),
+    // Pil kecil satu baris agar tidak menutupi bagian bawah aplikasi.
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(6.dp),
         modifier = modifier
-            .fillMaxWidth()
-            .background(Ink, RoundedCornerShape(16.dp))
-            .padding(horizontal = 14.dp, vertical = 12.dp),
+            .background(Ink.copy(alpha = 0.85f), RoundedCornerShape(50))
+            .padding(horizontal = 12.dp, vertical = 6.dp),
     ) {
-        Text("${action.label()} direkam", color = Color.White, fontWeight = FontWeight.SemiBold, fontSize = 14.sp)
-        Text("${action.detail()} · diteruskan ke aplikasi", style = MonoStyle, color = MutedDark)
+        Text(action.label(), color = Color.White, fontWeight = FontWeight.SemiBold, fontSize = 12.sp)
+        Text(action.detail(), style = MonoStyle, color = MutedDark)
     }
 }
 

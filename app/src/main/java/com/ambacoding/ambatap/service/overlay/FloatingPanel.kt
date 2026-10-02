@@ -18,7 +18,10 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
@@ -33,6 +36,7 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.ambacoding.ambatap.engine.player.PlaybackState
@@ -75,12 +79,14 @@ fun FloatingPanel(
 ) {
     val currentOnDrag by rememberUpdatedState(actions.onDrag)
     val capturing = recording == RecordingState.Status.RECORDING || recording == RecordingState.Status.PAUSED
-    val shape = RoundedCornerShape(20.dp)
+    // Saat merekam panel dibuat ringkas: margin & padding lebih kecil agar tidak menutupi aplikasi.
+    val shape = RoundedCornerShape(if (capturing) 18.dp else 20.dp)
+    val gap = if (capturing) 4.dp else 8.dp
     Box(
         modifier = Modifier
-            .padding(8.dp)
+            .padding(gap)
             .alpha(if (state.isActive || capturing) 1f else idleOpacity)
-            .shadow(8.dp, shape)
+            .shadow(if (capturing) 4.dp else 8.dp, shape)
             .background(Ink, shape)
             .pointerInput(Unit) {
                 detectDragGestures { change, drag ->
@@ -88,7 +94,7 @@ fun FloatingPanel(
                     currentOnDrag(drag)
                 }
             }
-            .padding(8.dp),
+            .padding(gap),
     ) {
         when {
             capturing -> RecordingContent(paused = recording == RecordingState.Status.PAUSED, actions)
@@ -126,27 +132,65 @@ private fun IdleContent(canPlay: Boolean, canRecord: Boolean, actions: PanelActi
     }
 }
 
+/**
+ * Kontrol rekaman yang ringkas (tombol 36dp, tanpa gagang; seluruh panel tetap bisa digeser).
+ * Bisa diperkecil menjadi satu titik REC agar hampir tidak menutupi aplikasi.
+ */
 @Composable
 private fun RecordingContent(paused: Boolean, actions: PanelActions) {
+    var collapsed by remember { mutableStateOf(false) }
+    if (collapsed) {
+        Box(
+            contentAlignment = Alignment.Center,
+            modifier = Modifier
+                .size(CollapsedSize)
+                .clip(CircleShape)
+                .clickable(role = Role.Button) { collapsed = false }
+                .semantics { contentDescription = "Tampilkan kontrol rekaman" },
+        ) {
+            Box(
+                Modifier
+                    .size(12.dp)
+                    .background(if (paused) MutedDark else RecordOrangeDark, CircleShape),
+            )
+        }
+        return
+    }
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(8.dp),
+        verticalArrangement = Arrangement.spacedBy(4.dp),
     ) {
-        DragHandle()
         PanelIconButton(
             icon = AmbaIcons.Stop,
             label = "Selesai merekam",
             onClick = actions.onFinishRecording,
             container = RecordOrange,
+            size = CompactButtonSize,
         )
         PanelIconButton(
             icon = if (paused) AmbaIcons.Record else AmbaIcons.Pause,
             label = if (paused) "Lanjut merekam" else "Jeda rekaman",
             onClick = if (paused) actions.onResumeRecording else actions.onPauseRecording,
+            size = CompactButtonSize,
         )
-        PanelIconButton(icon = AmbaIcons.Close, label = "Batalkan rekaman", onClick = actions.onCancelRecording)
+        PanelIconButton(
+            icon = AmbaIcons.Close,
+            label = "Batalkan rekaman",
+            onClick = actions.onCancelRecording,
+            size = CompactButtonSize,
+        )
+        PanelIconButton(
+            icon = AmbaIcons.Minimize,
+            label = "Perkecil panel",
+            onClick = { collapsed = true },
+            container = Color.Transparent,
+            size = CompactButtonSize,
+        )
     }
 }
+
+private val CompactButtonSize = 36.dp
+private val CollapsedSize = 32.dp
 
 @Composable
 private fun CountdownContent(state: PlaybackState, onStop: () -> Unit) {
@@ -259,12 +303,13 @@ private fun PanelIconButton(
     onClick: () -> Unit,
     container: Color = SurfaceVariantDark,
     enabled: Boolean = true,
+    size: Dp = 44.dp,
 ) {
     Box(
         contentAlignment = Alignment.Center,
         modifier = Modifier
-            .size(44.dp)
-            .clip(RoundedCornerShape(14.dp))
+            .size(size)
+            .clip(RoundedCornerShape(size * 0.32f))
             .background(if (enabled) container else container.copy(alpha = 0.4f))
             .clickable(enabled = enabled, role = Role.Button, onClick = onClick)
             .semantics { contentDescription = label },
@@ -273,7 +318,7 @@ private fun PanelIconButton(
             icon,
             contentDescription = null,
             tint = Color.White.copy(alpha = if (enabled) 1f else 0.5f),
-            modifier = Modifier.size(20.dp),
+            modifier = Modifier.size(size * 0.45f),
         )
     }
 }
