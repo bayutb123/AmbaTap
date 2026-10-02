@@ -262,11 +262,11 @@ siapkan juga opsi distribusi via GitHub Releases/F-Droid). Tambahkan juga pandua
 ## 8. Tahapan Pengerjaan (Milestone)
 
 ### Fase 0 — Setup proyek (±1–2 hari)
-- [ ] Buat proyek Android (Compose, Kotlin DSL, version catalog), package `com.bayutb123.ambatap`.
-- [ ] Tambah Hilt, Room, DataStore, kotlinx.serialization, Navigation Compose.
-- [ ] Tema Material 3 + struktur package di atas.
-- [ ] CI GitHub Actions: `./gradlew lint testDebugUnitTest assembleDebug`.
-- [ ] Perbarui `.gitignore` untuk Android (`build/`, `.gradle/`, `local.properties`, `*.iml`, `.idea/`).
+- [x] Buat proyek Android (Compose, Kotlin DSL, version catalog), package `com.bayutb123.ambatap`.
+- [x] Tambah Hilt, Room, DataStore, kotlinx.serialization, Navigation Compose.
+- [x] Tema Material 3 + struktur package di atas.
+- [x] CI GitHub Actions: `./gradlew lint testDebugUnitTest assembleDebug`.
+- [x] Perbarui `.gitignore` untuk Android (`build/`, `.gradle/`, `local.properties`, `*.iml`, `.idea/`).
 
 ### Fase 1 — Accessibility service & playback dasar (±3–4 hari)
 - [ ] `AmbaTapAccessibilityService` + config XML + `ServiceBridge`.
