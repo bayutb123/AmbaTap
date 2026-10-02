@@ -42,6 +42,11 @@ class MacroPlayer(
     private val _state = MutableStateFlow(PlaybackState())
     val state: StateFlow<PlaybackState> = _state.asStateFlow()
 
+    private val _lastMacro = MutableStateFlow<Macro?>(null)
+
+    /** Macro terakhir yang berhasil dimulai; dipakai tombol putar di panel melayang. */
+    val lastMacro: StateFlow<Macro?> = _lastMacro.asStateFlow()
+
     private val paused = MutableStateFlow(false)
     private var job: Job? = null
 
@@ -63,6 +68,7 @@ class MacroPlayer(
 
         val gen = ++generation
         paused.value = false
+        _lastMacro.value = macro
         _state.value = PlaybackState(
             status = if (startDelayMs > 0) Status.COUNTDOWN else Status.PLAYING,
             macroName = macro.name,

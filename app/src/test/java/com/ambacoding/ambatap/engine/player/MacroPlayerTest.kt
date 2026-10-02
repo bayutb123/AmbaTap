@@ -88,6 +88,7 @@ class MacroPlayerTest {
         val firstTap = controller.log.first().second as GestureSpec
         assertEquals(PxPoint(500f, 1000f), firstTap.strokes.single().points.single())
         assertEquals(GlobalType.BACK, controller.log.last().second)
+        assertEquals("test", player.lastMacro.value?.name)
         assertEquals(PlaybackState(), player.state.value)
     }
 
@@ -221,6 +222,7 @@ class MacroPlayerTest {
         player.play(macro(MacroAction.Tap(0.5f, 0.5f)))
 
         assertEquals(PlaybackState(error = PlaybackError.SERVICE_NOT_CONNECTED), player.state.value)
+        assertEquals(null, player.lastMacro.value)
     }
 
     @Test

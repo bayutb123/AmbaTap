@@ -15,6 +15,7 @@ import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedCard
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
@@ -48,6 +49,7 @@ fun HomeScreen(
         onOpenOnboarding = onOpenOnboarding,
         onOpenMacro = onOpenMacro,
         onOpenPlayground = onOpenPlayground,
+        onTogglePanel = viewModel::togglePanel,
     )
 }
 
@@ -58,6 +60,7 @@ private fun HomeContent(
     onOpenOnboarding: () -> Unit,
     onOpenMacro: (Long) -> Unit,
     onOpenPlayground: () -> Unit,
+    onTogglePanel: () -> Unit,
 ) {
     Scaffold(containerColor = MaterialTheme.colorScheme.background) { innerPadding ->
         LazyColumn(
@@ -89,9 +92,13 @@ private fun HomeContent(
                     }
                 }
             }
-            if (!uiState.isLoading && !uiState.serviceConnected) {
+            if (!uiState.isLoading) {
                 item {
-                    ServiceBanner(onActivate = onOpenOnboarding)
+                    if (uiState.serviceConnected) {
+                        ServiceActiveCard(panelShown = uiState.panelRequested, onTogglePanel = onTogglePanel)
+                    } else {
+                        ServiceBanner(onActivate = onOpenOnboarding)
+                    }
                 }
             }
             item {
@@ -144,6 +151,31 @@ private fun ServiceBanner(onActivate: () -> Unit) {
                 )
             }
             Button(onClick = onActivate) { Text("Aktifkan") }
+        }
+    }
+}
+
+@Composable
+private fun ServiceActiveCard(panelShown: Boolean, onTogglePanel: () -> Unit) {
+    OutlinedCard(shape = RoundedCornerShape(16.dp), modifier = Modifier.fillMaxWidth()) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(start = 16.dp, end = 12.dp, top = 12.dp, bottom = 12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            Column(modifier = Modifier.weight(1f)) {
+                Text("Layanan aktif", style = MaterialTheme.typography.titleMedium)
+                Text(
+                    "Siap memutar macro",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+            OutlinedButton(onClick = onTogglePanel) {
+                Text(if (panelShown) "Sembunyikan panel" else "Tampilkan panel")
+            }
         }
     }
 }
@@ -206,6 +238,7 @@ private fun HomePreview() {
             onOpenOnboarding = {},
             onOpenMacro = {},
             onOpenPlayground = {},
+            onTogglePanel = {},
         )
     }
 }

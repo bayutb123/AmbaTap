@@ -9,7 +9,7 @@ import androidx.compose.ui.graphics.vector.PathBuilder
 import androidx.compose.ui.graphics.vector.path
 import androidx.compose.ui.unit.dp
 
-/** Ikon garis 24dp sesuai desain; warnanya mengikuti `tint` pada `Icon`. */
+/** Ikon 24dp sesuai desain; warnanya mengikuti `tint` pada `Icon`. */
 object AmbaIcons {
     val Back: ImageVector by lazy {
         strokeIcon("Back") {
@@ -30,24 +30,68 @@ object AmbaIcons {
         }
     }
 
+    val Close: ImageVector by lazy {
+        strokeIcon("Close") {
+            moveTo(6f, 6f); lineTo(18f, 18f)
+            moveTo(18f, 6f); lineTo(6f, 18f)
+        }
+    }
+
+    /** Panah keluar dari kotak: buka aplikasi AmbaTap. */
+    val OpenApp: ImageVector by lazy {
+        strokeIcon("OpenApp") {
+            moveTo(14f, 4f); lineTo(20f, 4f); lineTo(20f, 10f)
+            moveTo(20f, 4f); lineTo(11f, 13f)
+            moveTo(18f, 14f); lineTo(18f, 19f); lineTo(5f, 19f); lineTo(5f, 6f); lineTo(10f, 6f)
+        }
+    }
+
+    val Play: ImageVector by lazy {
+        fillIcon("Play") {
+            moveTo(8f, 5.5f); lineTo(8f, 18.5f); lineTo(19f, 12f); close()
+        }
+    }
+
+    val Pause: ImageVector by lazy {
+        fillIcon("Pause") {
+            rect(6f, 5f, 4f, 14f)
+            rect(14f, 5f, 4f, 14f)
+        }
+    }
+
+    val Stop: ImageVector by lazy {
+        fillIcon("Stop") {
+            rect(6f, 6f, 12f, 12f)
+        }
+    }
+
     private fun PathBuilder.circle(cx: Float, cy: Float, r: Float) {
         moveTo(cx - r, cy)
         arcTo(r, r, 0f, isMoreThanHalf = true, isPositiveArc = true, x1 = cx + r, y1 = cy)
         arcTo(r, r, 0f, isMoreThanHalf = true, isPositiveArc = true, x1 = cx - r, y1 = cy)
     }
 
+    private fun PathBuilder.rect(x: Float, y: Float, w: Float, h: Float) {
+        moveTo(x, y); lineTo(x + w, y); lineTo(x + w, y + h); lineTo(x, y + h); close()
+    }
+
+    private fun builder(name: String) = ImageVector.Builder(
+        name = name,
+        defaultWidth = 24.dp,
+        defaultHeight = 24.dp,
+        viewportWidth = 24f,
+        viewportHeight = 24f,
+    )
+
     private fun strokeIcon(name: String, block: PathBuilder.() -> Unit): ImageVector =
-        ImageVector.Builder(
-            name = name,
-            defaultWidth = 24.dp,
-            defaultHeight = 24.dp,
-            viewportWidth = 24f,
-            viewportHeight = 24f,
-        ).path(
+        builder(name).path(
             stroke = SolidColor(Color.Black),
             strokeLineWidth = 2f,
             strokeLineCap = StrokeCap.Round,
             strokeLineJoin = StrokeJoin.Round,
             pathBuilder = block,
         ).build()
+
+    private fun fillIcon(name: String, block: PathBuilder.() -> Unit): ImageVector =
+        builder(name).path(fill = SolidColor(Color.Black), pathBuilder = block).build()
 }

@@ -19,4 +19,25 @@ data class StrokeSpec(
  */
 data class GestureSpec(val strokes: List<StrokeSpec>) {
     val totalDurationMs: Long get() = strokes.maxOf { it.startMs + it.durationMs }
+
+    /**
+     * `true` bila lintasan salah satu jari melewati persegi panjang [left, right) × [top, bottom).
+     * Ruas antar titik ikut dicek dengan sampling agar swipe yang melintas tetap terdeteksi.
+     */
+    fun intersects(left: Int, top: Int, right: Int, bottom: Int): Boolean {
+        fun inside(x: Float, y: Float) = x >= left && x < right && y >= top && y < bottom
+        return strokes.any { stroke ->
+            stroke.points.any { inside(it.x, it.y) } ||
+                stroke.points.zipWithNext().any { (a, b) ->
+                    (1 until SEGMENT_SAMPLES).any { i ->
+                        val t = i.toFloat() / SEGMENT_SAMPLES
+                        inside(a.x + (b.x - a.x) * t, a.y + (b.y - a.y) * t)
+                    }
+                }
+        }
+    }
+
+    private companion object {
+        const val SEGMENT_SAMPLES = 32
+    }
 }

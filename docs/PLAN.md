@@ -279,10 +279,11 @@ siapkan juga opsi distribusi via GitHub Releases/F-Droid). Tambahkan juga pandua
 - **Selesai bila:** macro hardcoded bisa men-tap & swipe di app lain secara akurat.
 
 ### Fase 2 — Overlay & floating panel (±3 hari)
-- [ ] Helper `OverlayWindow` (Compose di Service dengan lifecycle/saved-state owner).
-- [ ] Floating panel draggable dengan state dari `EngineState`.
-- [ ] Notifikasi status + tombol Stop; emergency stop via tombol volume.
-- [ ] Hitung mundur 3-2-1 sebelum mulai.
+- [x] Helper `OverlayWindow` (Compose di Service dengan lifecycle/saved-state owner).
+- [x] Floating panel draggable dengan state dari `EngineState` (sementara `PlaybackState`).
+      Panel ditembus otomatis saat gesture macro jatuh di atasnya.
+- [x] Notifikasi status + tombol Stop; emergency stop via tombol volume.
+- [x] Hitung mundur 3-2-1 sebelum mulai (dari pengaturan, saat diputar lewat panel).
 
 ### Fase 3 — Perekaman (±4–5 hari)
 - [ ] Record layer full-screen (`TYPE_ACCESSIBILITY_OVERLAY`).

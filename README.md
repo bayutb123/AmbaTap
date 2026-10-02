@@ -27,6 +27,10 @@ Bila SDK tidak terdeteksi otomatis, buat `local.properties` berisi `sdk.dir=/pat
 3. Buka **Playground** di beranda, jalankan macro contoh, dan bandingkan titik sentuhan
    (biru) dengan target (abu-abu); nilai `Δ` adalah selisihnya dalam piksel.
    Tekan volume turun 2× untuk menghentikan macro kapan saja.
+4. Di beranda, **Tampilkan panel** memunculkan panel melayang di atas aplikasi lain.
+   Tombol putar di panel menjalankan ulang macro terakhir setelah hitung mundur
+   (atur di Pengaturan). Selama macro berjalan, panel dan notifikasi menyediakan
+   tombol Jeda dan Berhenti.
 
 ## Struktur
 

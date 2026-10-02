@@ -8,13 +8,22 @@ import android.view.KeyEvent
 import android.view.accessibility.AccessibilityEvent
 import android.view.accessibility.AccessibilityNodeInfo
 import com.ambacoding.ambatap.domain.model.GlobalType
+import com.ambacoding.ambatap.domain.repository.SettingsRepository
 import com.ambacoding.ambatap.engine.player.GestureSpec
 import com.ambacoding.ambatap.engine.player.InputController
 import com.ambacoding.ambatap.engine.player.MacroPlayer
 import com.ambacoding.ambatap.engine.player.ScreenSize
+import com.ambacoding.ambatap.service.notification.PlaybackNotifier
+import com.ambacoding.ambatap.service.overlay.FloatingPanelState
+import com.ambacoding.ambatap.service.overlay.PanelController
 import dagger.hilt.android.AndroidEntryPoint
 import javax.inject.Inject
 import kotlin.coroutines.resume
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.MainScope
+import kotlinx.coroutines.cancel
+import kotlinx.coroutines.flow.distinctUntilChangedBy
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.suspendCancellableCoroutine
 
 @AndroidEntryPoint
@@ -22,11 +31,24 @@ class AmbaTapAccessibilityService : AccessibilityService(), InputController {
 
     @Inject lateinit var bridge: ServiceBridge
     @Inject lateinit var player: MacroPlayer
+    @Inject lateinit var panelState: FloatingPanelState
+    @Inject lateinit var settingsRepository: SettingsRepository
+    @Inject lateinit var notifier: PlaybackNotifier
 
     private val emergencyStop = EmergencyStopDetector()
 
+    private var scope: CoroutineScope? = null
+    private var panel: PanelController? = null
+
     override fun onServiceConnected() {
         super.onServiceConnected()
+        val scope = MainScope().also { scope = it }
+        panel = PanelController(this, scope, player, panelState, settingsRepository).also { it.start() }
+        scope.launch {
+            player.state
+                .distinctUntilChangedBy { listOf(it.status, it.loop, it.macroName, (it.countdownMs + 999) / 1000) }
+                .collect(notifier::update)
+        }
         bridge.attach(this)
     }
 
@@ -43,6 +65,11 @@ class AmbaTapAccessibilityService : AccessibilityService(), InputController {
     private fun detach() {
         player.stop()
         bridge.detach(this)
+        panel?.destroy()
+        panel = null
+        scope?.cancel()
+        scope = null
+        notifier.cancel()
     }
 
     override fun onAccessibilityEvent(event: AccessibilityEvent?) = Unit
@@ -66,7 +93,12 @@ class AmbaTapAccessibilityService : AccessibilityService(), InputController {
 
     override val screenSize: ScreenSize get() = realScreenSize()
 
-    override suspend fun dispatch(gesture: GestureSpec): Boolean =
+    override suspend fun dispatch(gesture: GestureSpec): Boolean {
+        val panel = panel ?: return dispatchNow(gesture)
+        return panel.passThrough(gesture) { dispatchNow(gesture) }
+    }
+
+    private suspend fun dispatchNow(gesture: GestureSpec): Boolean =
         suspendCancellableCoroutine { cont ->
             val callback = object : GestureResultCallback() {
                 override fun onCompleted(gestureDescription: GestureDescription?) {
