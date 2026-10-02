@@ -21,7 +21,7 @@ Bila SDK tidak terdeteksi otomatis, buat `local.properties` berisi `sdk.dir=/pat
 2. Aktifkan layanan lewat layar onboarding, atau langsung dengan adb:
    ```bash
    adb shell settings put secure enabled_accessibility_services \
-     com.bayutb123.ambatap/com.bayutb123.ambatap.service.AmbaTapAccessibilityService
+     com.ambacoding.ambatap/com.ambacoding.ambatap.service.AmbaTapAccessibilityService
    adb shell settings put secure accessibility_enabled 1
    ```
 3. Buka **Playground** di beranda, jalankan macro contoh, dan bandingkan titik sentuhan
@@ -31,7 +31,7 @@ Bila SDK tidak terdeteksi otomatis, buat `local.properties` berisi `sdk.dir=/pat
 ## Struktur
 
 ```
-app/src/main/java/com/bayutb123/ambatap/
+app/src/main/java/com/ambacoding/ambatap/
 ├── domain/   # model (Macro, MacroAction, ...) & interface repository
 ├── data/     # Room (macro), DataStore (pengaturan), implementasi repository
 ├── di/       # modul Hilt

@@ -110,7 +110,7 @@ sebelum `windowManager.addView(...)`. Buat helper `OverlayWindow` reusable.
 ## 4. Arsitektur & Struktur Proyek
 
 ```
-app/src/main/java/com/bayutb123/ambatap/
+app/src/main/java/com/ambacoding/ambatap/
 ├── AmbaTapApp.kt                  # @HiltAndroidApp
 ├── MainActivity.kt                # host NavHost Compose
 ├── domain/
@@ -262,7 +262,7 @@ siapkan juga opsi distribusi via GitHub Releases/F-Droid). Tambahkan juga pandua
 ## 8. Tahapan Pengerjaan (Milestone)
 
 ### Fase 0 — Setup proyek (±1–2 hari)
-- [x] Buat proyek Android (Compose, Kotlin DSL, version catalog), package `com.bayutb123.ambatap`.
+- [x] Buat proyek Android (Compose, Kotlin DSL, version catalog), package `com.ambacoding.ambatap`.
 - [x] Tambah Hilt, Room, DataStore, kotlinx.serialization, Navigation Compose.
 - [x] Tema Material 3 + struktur package di atas.
 - [x] CI GitHub Actions: `./gradlew lint testDebugUnitTest assembleDebug`.

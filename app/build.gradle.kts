@@ -10,11 +10,11 @@ plugins {
 }
 
 android {
-    namespace = "com.bayutb123.ambatap"
+    namespace = "com.ambacoding.ambatap"
     compileSdk = 37
 
     defaultConfig {
-        applicationId = "com.bayutb123.ambatap"
+        applicationId = "com.ambacoding.ambatap"
         minSdk = 26
         targetSdk = 37
         versionCode = 1
