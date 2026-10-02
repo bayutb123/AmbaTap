@@ -2,6 +2,7 @@
 <resources>
     <string name="app_name">AmbaTap</string>
     <string name="accessibility_service_label">AmbaTap</string>
+    <string name="tile_label">Panel AmbaTap</string>
     <string name="accessibility_service_summary">Rekam dan putar ulang tap &amp; swipe</string>
     <string name="accessibility_service_description">AmbaTap memakai Layanan Aksesibilitas untuk memutar ulang tap, swipe, dan long press yang Anda rekam, menampilkan panel kontrol di atas aplikasi lain, dan membaca tombol volume (tekan volume turun 2×) untuk menghentikan macro. Semua macro tersimpan di perangkat dan tidak dikirim ke mana pun.</string>
 </resources>

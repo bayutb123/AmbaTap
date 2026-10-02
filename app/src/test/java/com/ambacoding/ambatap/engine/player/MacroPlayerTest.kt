@@ -11,6 +11,7 @@ import com.ambacoding.ambatap.service.ServiceBridge
 import kotlin.random.Random
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.TestCoroutineScheduler
 import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.advanceTimeBy
@@ -223,6 +224,33 @@ class MacroPlayerTest {
 
         assertEquals(PlaybackState(error = PlaybackError.SERVICE_NOT_CONNECTED), player.state.value)
         assertEquals(null, player.lastMacro.value)
+    }
+
+    @Test
+    fun `flags an orientation mismatch`() = runTest {
+        val (player, _) = setUp()
+        val landscape = macro(MacroAction.Tap(0.5f, 0.5f)).copy(screen = ScreenInfo(2400, 1080, 1))
+
+        player.play(landscape)
+        assertEquals(true, player.state.value.orientationMismatch)
+        player.stop()
+
+        player.play(macro(MacroAction.Tap(0.5f, 0.5f)))
+        assertEquals(false, player.state.value.orientationMismatch)
+        player.stop()
+    }
+
+    @Test
+    fun `emits each dispatched gesture`() = runTest {
+        val (player, _) = setUp()
+        val emitted = mutableListOf<GestureSpec>()
+        backgroundScope.launch { player.gestures.collect { emitted += it } }
+        runCurrent()
+
+        player.play(macro(MacroAction.Tap(0.5f, 0.5f), MacroAction.Wait(10), MacroAction.Tap(0.1f, 0.1f)))
+        advanceUntilIdle()
+
+        assertEquals(2, emitted.size)
     }
 
     @Test

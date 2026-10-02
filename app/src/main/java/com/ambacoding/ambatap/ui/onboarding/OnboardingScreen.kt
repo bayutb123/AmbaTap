@@ -38,6 +38,7 @@ import androidx.core.app.NotificationManagerCompat
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.ambacoding.ambatap.ui.components.startActivitySafely
 
 private val disclosurePoints = listOf(
     "Memutar ulang tap, swipe, dan long press yang Anda rekam",
@@ -61,11 +62,11 @@ fun OnboardingScreen(
     val notificationLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestPermission(),
     ) { granted -> notificationsOn = granted }
-    val requestNotifications = {
+    val requestNotifications: () -> Unit = {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             notificationLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
         } else {
-            context.startActivity(
+            context.startActivitySafely(
                 Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS)
                     .putExtra(Settings.EXTRA_APP_PACKAGE, context.packageName)
                     .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
@@ -149,7 +150,7 @@ fun OnboardingScreen(
             } else {
                 Button(
                     onClick = {
-                        context.startActivity(
+                        context.startActivitySafely(
                             Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS)
                                 .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
                         )

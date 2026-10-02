@@ -1,7 +1,9 @@
 package com.ambacoding.ambatap.ui.home
 
+import android.net.Uri
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.ambacoding.ambatap.data.transfer.MacroFiles
 import com.ambacoding.ambatap.domain.model.Macro
 import com.ambacoding.ambatap.domain.model.MacroAction
 import com.ambacoding.ambatap.domain.model.PlaybackConfig
@@ -18,6 +20,7 @@ import com.ambacoding.ambatap.service.overlay.PointPickerRequests
 import com.ambacoding.ambatap.ui.components.defaultMacroName
 import com.ambacoding.ambatap.ui.components.label
 import dagger.hilt.android.lifecycle.HiltViewModel
+import java.io.IOException
 import javax.inject.Inject
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.Flow
@@ -62,6 +65,7 @@ class HomeViewModel @Inject constructor(
     serviceBridge: ServiceBridge,
     private val panelState: FloatingPanelState,
     private val pickerRequests: PointPickerRequests,
+    private val macroFiles: MacroFiles,
 ) : ViewModel() {
 
     val uiState: StateFlow<HomeUiState> = combine(
@@ -143,6 +147,17 @@ class HomeViewModel @Inject constructor(
             if (player.state.value.macroId == id) player.stop()
             macroRepository.delete(id)
             _events.send(HomeEvent.Deleted(macro))
+        }
+    }
+
+    fun export(id: Long, uri: Uri) {
+        viewModelScope.launch {
+            val message = try {
+                if (macroFiles.exportOne(uri, id) > 0) "Macro diekspor" else "Macro tidak ditemukan"
+            } catch (e: IOException) {
+                "Gagal mengekspor: ${e.message}"
+            }
+            _events.send(HomeEvent.Message(message))
         }
     }
 

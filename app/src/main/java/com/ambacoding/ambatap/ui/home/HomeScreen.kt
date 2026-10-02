@@ -1,6 +1,8 @@
 package com.ambacoding.ambatap.ui.home
 
 import androidx.activity.compose.LocalActivity
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -80,6 +82,7 @@ class HomeActions(
     val onStop: () -> Unit = {},
     val onRename: (Long, String) -> Unit = { _, _ -> },
     val onDuplicate: (Long) -> Unit = {},
+    val onExport: (MacroItem) -> Unit = {},
     val onDelete: (Long) -> Unit = {},
 )
 
@@ -96,6 +99,14 @@ fun HomeScreen(
     val context = LocalContext.current
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
+    var exporting by remember { mutableStateOf<Long?>(null) }
+    val exportLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.CreateDocument("application/json"),
+    ) { uri ->
+        val id = exporting
+        if (uri != null && id != null) viewModel.export(id, uri)
+        exporting = null
+    }
 
     LaunchedEffect(viewModel) {
         viewModel.events.collect { event ->
@@ -135,6 +146,10 @@ fun HomeScreen(
             onStop = viewModel::stop,
             onRename = viewModel::rename,
             onDuplicate = viewModel::duplicate,
+            onExport = { macro ->
+                exporting = macro.id
+                exportLauncher.launch("${macro.name.replace(Regex("[^A-Za-z0-9 _-]"), "").trim().ifEmpty { "macro" }}.json")
+            },
             onDelete = viewModel::delete,
         ),
     )
@@ -434,6 +449,10 @@ private fun MacroCard(
                     DropdownMenuItem(text = { Text("Duplikat") }, onClick = {
                         menuOpen = false
                         actions.onDuplicate(macro.id)
+                    })
+                    DropdownMenuItem(text = { Text("Ekspor") }, onClick = {
+                        menuOpen = false
+                        actions.onExport(macro)
                     })
                     DropdownMenuItem(text = { Text("Hapus", color = colors.error) }, onClick = {
                         menuOpen = false

@@ -45,6 +45,7 @@ import com.ambacoding.ambatap.ui.theme.MutedDark
 import com.ambacoding.ambatap.ui.theme.PlayBlue
 import com.ambacoding.ambatap.ui.theme.PlayBlueDark
 import com.ambacoding.ambatap.ui.theme.RecordOrange
+import com.ambacoding.ambatap.ui.theme.RecordOrangeDark
 import com.ambacoding.ambatap.ui.theme.SurfaceVariantDark
 
 /** Aksi yang bisa dipicu dari panel melayang. */
@@ -200,6 +201,9 @@ private fun PlayingContent(
             )
         }
         Text(state.progressLabel(), style = MonoStyle, color = MutedDark)
+        if (state.orientationMismatch) {
+            Text("Orientasi layar berbeda dari saat direkam", color = RecordOrangeDark, fontSize = 12.sp)
+        }
         Box(
             Modifier
                 .fillMaxWidth()

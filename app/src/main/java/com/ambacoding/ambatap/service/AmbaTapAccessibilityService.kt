@@ -21,6 +21,7 @@ import com.ambacoding.ambatap.service.overlay.PanelController
 import com.ambacoding.ambatap.service.overlay.PointPickerController
 import com.ambacoding.ambatap.service.overlay.PointPickerRequests
 import com.ambacoding.ambatap.service.overlay.RecordingController
+import com.ambacoding.ambatap.service.overlay.TouchIndicatorController
 import dagger.hilt.android.AndroidEntryPoint
 import javax.inject.Inject
 import kotlin.coroutines.resume
@@ -49,6 +50,7 @@ class AmbaTapAccessibilityService : AccessibilityService(), InputController {
     private var panel: PanelController? = null
     private var recording: RecordingController? = null
     private var picker: PointPickerController? = null
+    private var touchIndicator: TouchIndicatorController? = null
 
     override fun onServiceConnected() {
         super.onServiceConnected()
@@ -68,6 +70,7 @@ class AmbaTapAccessibilityService : AccessibilityService(), InputController {
         recording.start()
         picker = PointPickerController(this, scope, pickerRequests, player, macroRepository, settingsRepository)
             .also { it.start() }
+        touchIndicator = TouchIndicatorController(this, scope, player, settingsRepository).also { it.start() }
         scope.launch {
             player.state
                 .distinctUntilChangedBy { listOf(it.status, it.loop, it.macroName, (it.countdownMs + 999) / 1000) }
@@ -93,6 +96,8 @@ class AmbaTapAccessibilityService : AccessibilityService(), InputController {
         recording = null
         picker?.destroy()
         picker = null
+        touchIndicator?.destroy()
+        touchIndicator = null
         panel?.destroy()
         panel = null
         scope?.cancel()

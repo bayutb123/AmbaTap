@@ -18,13 +18,31 @@ android {
         minSdk = 26
         targetSdk = 37
         versionCode = 1
-        versionName = "0.1.0"
+        versionName = "1.0.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
+    // Kunci rilis dari environment (CI) atau ~/.gradle/gradle.properties; tanpa itu APK release tidak ditandatangani.
+    val keystorePath = providers.environmentVariable("AMBATAP_KEYSTORE_PATH")
+        .orElse(providers.gradleProperty("ambatap.keystore.path"))
+    signingConfigs {
+        if (keystorePath.isPresent) {
+            create("release") {
+                storeFile = file(keystorePath.get())
+                storePassword = providers.environmentVariable("AMBATAP_KEYSTORE_PASSWORD")
+                    .orElse(providers.gradleProperty("ambatap.keystore.password")).get()
+                keyAlias = providers.environmentVariable("AMBATAP_KEY_ALIAS")
+                    .orElse(providers.gradleProperty("ambatap.key.alias")).get()
+                keyPassword = providers.environmentVariable("AMBATAP_KEY_PASSWORD")
+                    .orElse(providers.gradleProperty("ambatap.key.password")).get()
+            }
+        }
+    }
+
     buildTypes {
         release {
+            signingConfig = signingConfigs.findByName("release")
             isMinifyEnabled = true
             isShrinkResources = true
             proguardFiles(
@@ -41,6 +59,7 @@ android {
 
     buildFeatures {
         compose = true
+        buildConfig = true
     }
 }
 

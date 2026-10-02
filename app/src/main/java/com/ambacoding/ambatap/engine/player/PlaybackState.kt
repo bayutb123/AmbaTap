@@ -13,6 +13,8 @@ data class PlaybackState(
     val actionIndex: Int = 0,
     val actionCount: Int = 0,
     val countdownMs: Long = 0,
+    /** Orientasi layar (potret/lanskap) berbeda dengan saat macro direkam; posisi bisa meleset. */
+    val orientationMismatch: Boolean = false,
     /** Alasan pemutaran terakhir gagal dimulai; dibersihkan saat play berikutnya. */
     val error: PlaybackError? = null,
 ) {

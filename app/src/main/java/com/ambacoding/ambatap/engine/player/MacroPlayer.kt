@@ -5,6 +5,7 @@ import com.ambacoding.ambatap.domain.model.Macro
 import com.ambacoding.ambatap.domain.model.MacroAction
 import com.ambacoding.ambatap.domain.model.PlaybackConfig
 import com.ambacoding.ambatap.domain.model.RepeatMode
+import com.ambacoding.ambatap.domain.model.ScreenInfo
 import com.ambacoding.ambatap.engine.player.PlaybackState.Status
 import com.ambacoding.ambatap.service.ServiceBridge
 import javax.inject.Inject
@@ -14,7 +15,11 @@ import kotlin.time.TimeSource
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.channels.BufferOverflow
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharedFlow
+import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
@@ -47,6 +52,14 @@ class MacroPlayer(
     /** Macro terakhir yang berhasil dimulai; dipakai tombol putar di panel melayang. */
     val lastMacro: StateFlow<Macro?> = _lastMacro.asStateFlow()
 
+    private val _gestures = MutableSharedFlow<GestureSpec>(
+        extraBufferCapacity = 16,
+        onBufferOverflow = BufferOverflow.DROP_OLDEST,
+    )
+
+    /** Setiap gesture yang dikirim, untuk indikator sentuhan. */
+    val gestures: SharedFlow<GestureSpec> = _gestures.asSharedFlow()
+
     private val paused = MutableStateFlow(false)
     private var job: Job? = null
 
@@ -76,6 +89,7 @@ class MacroPlayer(
             totalLoops = (macro.config.repeat as? RepeatMode.Count)?.times?.coerceAtLeast(1),
             actionCount = macro.actions.size,
             countdownMs = startDelayMs,
+            orientationMismatch = macro.screen.isLandscape != controller.screenSize.isLandscape,
         )
         job = scope.launch {
             try {
@@ -165,6 +179,7 @@ class MacroPlayer(
                     jitterPx = config.randomOffsetPx,
                     random = random,
                 ) ?: return
+                _gestures.tryEmit(gesture)
                 // Gesture yang dibatalkan sistem (mis. user menyentuh layar) dilewati saja.
                 controller.dispatch(gesture)
             }
@@ -192,6 +207,9 @@ class MacroPlayer(
     private suspend fun awaitResumed() {
         paused.first { !it }
     }
+
+    private val ScreenInfo.isLandscape get() = widthPx > heightPx
+    private val ScreenSize.isLandscape get() = widthPx > heightPx
 
     private companion object {
         const val COUNTDOWN_TICK_MS = 1_000L

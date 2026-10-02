@@ -308,11 +308,16 @@ siapkan juga opsi distribusi via GitHub Releases/F-Droid). Tambahkan juga pandua
 - [x] Randomisasi posisi & jeda.
 
 ### Fase 6 — Polish & rilis v1.0 (±3–4 hari)
-- [ ] Impor/ekspor JSON (Storage Access Framework), share macro.
-- [ ] Quick Settings tile (buka panel / jalankan macro terakhir).
-- [ ] Penanganan rotasi & perbedaan resolusi; peringatan bila tidak cocok.
-- [ ] Optimasi baterai: hentikan overlay saat idle, tidak ada wakelock permanen.
-- [ ] Ikon, nama, screenshot, kebijakan privasi, signed release + GitHub Release.
+- [x] Impor/ekspor JSON (Storage Access Framework), share macro (ekspor per macro dari menu beranda).
+- [x] Quick Settings tile (buka panel / jalankan macro terakhir).
+      Tile menampilkan/menyembunyikan panel; macro terakhir diputar dari panel.
+- [x] Penanganan rotasi & perbedaan resolusi; peringatan bila tidak cocok.
+      Koordinat ternormalisasi; panel memberi peringatan bila orientasi berbeda.
+- [x] Optimasi baterai: hentikan overlay saat idle, tidak ada wakelock permanen.
+      Pengaturan menampilkan status optimasi baterai dan tautan untuk mengubahnya.
+- [x] Ikon, nama, kebijakan privasi, signed release + GitHub Release (workflow tag `v*`).
+- [ ] Screenshot (perlu perangkat) dan rilis pertama: isi secrets keystore lalu push tag `v1.0.0`.
+- [x] Tambahan: font sesuai desain, indikator sentuhan saat memutar, layar Pengaturan lengkap.
 
 ### Fase 7 — Lanjutan (pasca v1.0)
 - [ ] Mode presisi via Shizuku: parsing `getevent -lt` (multi-touch protocol B,
