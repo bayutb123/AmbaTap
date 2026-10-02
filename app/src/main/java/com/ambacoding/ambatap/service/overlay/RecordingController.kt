@@ -33,10 +33,8 @@ import com.ambacoding.ambatap.engine.recorder.RecordingState
 import com.ambacoding.ambatap.engine.recorder.TouchSample
 import com.ambacoding.ambatap.service.realScreenSize
 import com.ambacoding.ambatap.service.screenRotation
+import com.ambacoding.ambatap.ui.components.defaultMacroName
 import com.ambacoding.ambatap.ui.theme.AmbaTapTheme
-import java.text.SimpleDateFormat
-import java.util.Date
-import java.util.Locale
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.SharingStarted
@@ -315,8 +313,7 @@ class RecordingController(
 
     private fun now() = SystemClock.uptimeMillis()
 
-    private fun defaultName(): String =
-        "Rekaman " + SimpleDateFormat("d MMM, HH.mm", Locale.forLanguageTag("id-ID")).format(Date())
+    private fun defaultName(): String = defaultMacroName("Rekaman")
 
     private companion object {
         const val NO_POINTER = -1

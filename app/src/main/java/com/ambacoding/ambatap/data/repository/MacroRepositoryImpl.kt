@@ -18,6 +18,8 @@ class MacroRepositoryImpl @Inject constructor(
 
     override suspend fun getMacro(id: Long): Macro? = dao.getById(id)?.toDomain()
 
+    override fun observeMacro(id: Long): Flow<Macro?> = dao.observeById(id).map { it?.toDomain() }
+
     override suspend fun save(macro: Macro): Long {
         val rowId = dao.upsert(macro.toEntity())
         // @Upsert mengembalikan -1 bila baris yang ada diperbarui.

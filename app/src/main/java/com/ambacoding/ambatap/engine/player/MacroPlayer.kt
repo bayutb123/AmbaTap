@@ -71,6 +71,7 @@ class MacroPlayer(
         _lastMacro.value = macro
         _state.value = PlaybackState(
             status = if (startDelayMs > 0) Status.COUNTDOWN else Status.PLAYING,
+            macroId = macro.id,
             macroName = macro.name,
             totalLoops = (macro.config.repeat as? RepeatMode.Count)?.times?.coerceAtLeast(1),
             actionCount = macro.actions.size,

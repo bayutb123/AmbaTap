@@ -65,6 +65,25 @@ object AmbaIcons {
         }
     }
 
+    val More: ImageVector by lazy {
+        fillIcon("More") {
+            circle(12f, 5f, 1.8f)
+            circle(12f, 12f, 1.8f)
+            circle(12f, 19f, 1.8f)
+        }
+    }
+
+    val Target: ImageVector by lazy {
+        strokeIcon("Target") {
+            circle(12f, 12f, 7f)
+            circle(12f, 12f, 2.5f)
+            moveTo(12f, 1.5f); lineTo(12f, 4.5f)
+            moveTo(12f, 19.5f); lineTo(12f, 22.5f)
+            moveTo(1.5f, 12f); lineTo(4.5f, 12f)
+            moveTo(19.5f, 12f); lineTo(22.5f, 12f)
+        }
+    }
+
     val Stop: ImageVector by lazy {
         fillIcon("Stop") {
             rect(6f, 6f, 12f, 12f)

@@ -296,14 +296,15 @@ siapkan juga opsi distribusi via GitHub Releases/F-Droid). Tambahkan juga pandua
 - **Selesai bila:** rekam di app nyata (mis. kalkulator) → putar ulang hasil identik.
 
 ### Fase 4 — Persistensi & manajemen macro (±2–3 hari)
-- [ ] Room entity/DAO/repository + mapper JSON.
-- [ ] Home: daftar, rename, duplikat, hapus (dengan undo).
-- [ ] Pengaturan playback per macro.
+- [x] Room entity/DAO/repository + mapper JSON.
+- [x] Home: daftar, rename, duplikat, hapus (dengan undo), putar/stop langsung dari daftar.
+- [x] Pengaturan playback per macro.
 
 ### Fase 5 — Auto clicker manual & editor (±4–5 hari)
 - [ ] Point picker overlay (tambah/geser/hapus titik, interval per titik).
-- [ ] Editor timeline: reorder, edit nilai, sisipkan Wait/Global/LaunchApp.
-- [ ] Randomisasi posisi & jeda.
+- [x] Editor timeline: reorder, edit nilai, sisipkan Wait/Global/LaunchApp.
+      Urutan diubah dengan tombol Naik/Turun (belum drag).
+- [x] Randomisasi posisi & jeda.
 
 ### Fase 6 — Polish & rilis v1.0 (±3–4 hari)
 - [ ] Impor/ekspor JSON (Storage Access Framework), share macro.

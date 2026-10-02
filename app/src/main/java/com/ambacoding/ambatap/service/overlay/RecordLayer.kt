@@ -39,6 +39,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.ambacoding.ambatap.domain.model.MacroAction
 import com.ambacoding.ambatap.engine.recorder.RecordingState
+import com.ambacoding.ambatap.ui.components.formatClock
 import com.ambacoding.ambatap.ui.theme.Ink
 import com.ambacoding.ambatap.ui.theme.MonoStyle
 import com.ambacoding.ambatap.ui.theme.MutedDark
@@ -105,7 +106,7 @@ fun RecordLayer(state: RecordingState, liveTrail: List<Offset>) {
                     .background(if (paused) MutedDark else RecordOrangeDark, CircleShape),
             )
             Text(if (paused) "JEDA" else "REC", style = MonoStyle, color = Color.White, fontWeight = FontWeight.Medium)
-            Text(formatElapsed(state.elapsedMs(now)), style = MonoStyle, color = Color.White)
+            Text(formatClock(state.elapsedMs(now)), style = MonoStyle, color = Color.White)
             Text("· ${state.actions.size} aksi", style = MonoStyle, color = MutedDark)
         }
 
@@ -187,9 +188,4 @@ private fun MacroAction.detail(): String = when (this) {
     is MacroAction.LongPress -> "$durationMs ms"
     is MacroAction.Swipe -> "${points.size} titik · $durationMs ms"
     else -> ""
-}
-
-internal fun formatElapsed(ms: Long): String {
-    val totalSeconds = ms / 1000
-    return "%02d:%02d".format(totalSeconds / 60, totalSeconds % 60)
 }

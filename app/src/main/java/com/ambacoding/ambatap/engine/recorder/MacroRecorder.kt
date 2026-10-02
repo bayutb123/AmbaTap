@@ -4,6 +4,7 @@ import com.ambacoding.ambatap.domain.model.Macro
 import com.ambacoding.ambatap.domain.model.MacroAction
 import com.ambacoding.ambatap.domain.model.PlaybackConfig
 import com.ambacoding.ambatap.domain.model.ScreenInfo
+import com.ambacoding.ambatap.domain.model.withDelay
 import javax.inject.Inject
 import javax.inject.Singleton
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -122,16 +123,5 @@ class MacroRecorder @Inject constructor() {
             createdAt = createdAt,
             updatedAt = createdAt,
         )
-    }
-
-    private fun MacroAction.withDelay(delay: Long): MacroAction = when (this) {
-        is MacroAction.Tap -> copy(delayBeforeMs = delay)
-        is MacroAction.LongPress -> copy(delayBeforeMs = delay)
-        is MacroAction.Swipe -> copy(delayBeforeMs = delay)
-        is MacroAction.MultiTouch -> copy(delayBeforeMs = delay)
-        is MacroAction.Wait -> copy(delayBeforeMs = delay)
-        is MacroAction.GlobalAction -> copy(delayBeforeMs = delay)
-        is MacroAction.LaunchApp -> copy(delayBeforeMs = delay)
-        is MacroAction.InputText -> copy(delayBeforeMs = delay)
     }
 }

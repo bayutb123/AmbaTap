@@ -13,6 +13,9 @@ interface MacroDao {
     @Query("SELECT * FROM macros WHERE id = :id")
     suspend fun getById(id: Long): MacroEntity?
 
+    @Query("SELECT * FROM macros WHERE id = :id")
+    fun observeById(id: Long): Flow<MacroEntity?>
+
     @Upsert
     suspend fun upsert(entity: MacroEntity): Long
 

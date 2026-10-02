@@ -2,6 +2,8 @@ package com.ambacoding.ambatap.engine.player
 
 data class PlaybackState(
     val status: Status = Status.IDLE,
+    /** Id macro yang diputar; 0 untuk macro yang belum disimpan. */
+    val macroId: Long? = null,
     val macroName: String? = null,
     /** Loop yang sedang berjalan, mulai dari 1. */
     val loop: Int = 0,

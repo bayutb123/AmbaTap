@@ -4,7 +4,6 @@ import androidx.compose.runtime.Composable
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
-import androidx.navigation.toRoute
 import com.ambacoding.ambatap.ui.editor.EditorScreen
 import com.ambacoding.ambatap.ui.home.HomeScreen
 import com.ambacoding.ambatap.ui.onboarding.OnboardingScreen
@@ -32,11 +31,8 @@ fun AmbaTapNavHost() {
         composable<PlaygroundRoute> {
             PlaygroundScreen(onBack = { navController.popBackStack() })
         }
-        composable<EditorRoute> { entry ->
-            EditorScreen(
-                macroId = entry.toRoute<EditorRoute>().macroId,
-                onBack = { navController.popBackStack() },
-            )
+        composable<EditorRoute> {
+            EditorScreen(onBack = { navController.popBackStack() })
         }
     }
 }

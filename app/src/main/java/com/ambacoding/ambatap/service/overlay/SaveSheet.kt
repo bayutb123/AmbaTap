@@ -25,6 +25,7 @@ import com.ambacoding.ambatap.domain.model.MacroAction
 import com.ambacoding.ambatap.domain.model.RepeatMode
 import com.ambacoding.ambatap.domain.model.totalDurationMs
 import com.ambacoding.ambatap.engine.recorder.RecordingState
+import com.ambacoding.ambatap.ui.components.formatClock
 import com.ambacoding.ambatap.ui.theme.MonoStyle
 
 /** Pilihan jumlah ulang yang ditawarkan saat menyimpan; bisa diubah lagi di editor. */
@@ -69,7 +70,7 @@ fun SaveSheet(
 
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             StatTile("${state.actions.size}", "aksi", Modifier.weight(1f))
-            StatTile(formatElapsed(state.actions.totalDurationMs()), "durasi", Modifier.weight(1f))
+            StatTile(formatClock(state.actions.totalDurationMs()), "durasi", Modifier.weight(1f))
             val screen = state.screen
             StatTile(
                 if (screen != null) "${screen.widthPx}×${screen.heightPx}" else "-",
