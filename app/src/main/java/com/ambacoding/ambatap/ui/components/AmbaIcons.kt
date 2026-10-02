@@ -84,6 +84,35 @@ object AmbaIcons {
         }
     }
 
+    val Plus: ImageVector by lazy {
+        strokeIcon("Plus") {
+            moveTo(12f, 5f); lineTo(12f, 19f)
+            moveTo(5f, 12f); lineTo(19f, 12f)
+        }
+    }
+
+    val Swipe: ImageVector by lazy {
+        strokeIcon("Swipe") {
+            moveTo(4f, 12f); lineTo(19f, 12f)
+            moveTo(14f, 7f); lineTo(19f, 12f); lineTo(14f, 17f)
+        }
+    }
+
+    val Check: ImageVector by lazy {
+        strokeIcon("Check") {
+            moveTo(5f, 12.5f); lineTo(9.5f, 17f); lineTo(19f, 7.5f)
+        }
+    }
+
+    val Repeat: ImageVector by lazy {
+        strokeIcon("Repeat") {
+            moveTo(17f, 3f); lineTo(20f, 6f); lineTo(17f, 9f)
+            moveTo(4f, 11f); lineTo(4f, 9f); arcTo(3f, 3f, 0f, false, true, 7f, 6f); lineTo(20f, 6f)
+            moveTo(7f, 21f); lineTo(4f, 18f); lineTo(7f, 15f)
+            moveTo(20f, 13f); lineTo(20f, 15f); arcTo(3f, 3f, 0f, false, true, 17f, 18f); lineTo(4f, 18f)
+        }
+    }
+
     val Stop: ImageVector by lazy {
         fillIcon("Stop") {
             rect(6f, 6f, 12f, 12f)

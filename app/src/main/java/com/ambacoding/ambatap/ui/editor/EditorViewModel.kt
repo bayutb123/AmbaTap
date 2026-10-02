@@ -11,6 +11,7 @@ import com.ambacoding.ambatap.domain.model.move
 import com.ambacoding.ambatap.domain.repository.MacroRepository
 import com.ambacoding.ambatap.domain.repository.SettingsRepository
 import com.ambacoding.ambatap.engine.player.MacroPlayer
+import com.ambacoding.ambatap.service.overlay.PointPickerRequests
 import com.ambacoding.ambatap.ui.navigation.EditorRoute
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
@@ -44,6 +45,7 @@ class EditorViewModel @Inject constructor(
     private val repository: MacroRepository,
     private val settingsRepository: SettingsRepository,
     private val player: MacroPlayer,
+    private val pickerRequests: PointPickerRequests,
 ) : ViewModel() {
 
     private val macroId = savedStateHandle.toRoute<EditorRoute>().macroId
@@ -110,6 +112,21 @@ class EditorViewModel @Inject constructor(
     fun discardChanges() {
         dirty.value = false
         viewModelScope.launch { draft.value = repository.getMacro(macroId) }
+    }
+
+    /**
+     * Menyimpan perubahan lalu membuka overlay pemilih titik di atas aplikasi sebelumnya.
+     * Hasil dari overlay disimpan ke database dan masuk lagi ke editor lewat [MacroRepository.observeMacro].
+     */
+    fun editOnScreen() {
+        val macro = draft.value ?: return
+        viewModelScope.launch {
+            val saved = macro.copy(updatedAt = System.currentTimeMillis())
+            repository.save(saved)
+            dirty.value = false
+            pickerRequests.open(saved)
+            _events.send(EditorEvent.Minimize)
+        }
     }
 
     /** Menyimpan perubahan lalu memutar macro di aplikasi sebelumnya setelah hitung mundur. */

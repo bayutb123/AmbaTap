@@ -35,6 +35,9 @@ Bila SDK tidak terdeteksi otomatis, buat `local.properties` berisi `sdk.dir=/pat
    tujuan, tekan tombol merah di panel, lalu lakukan tap/swipe seperti biasa: setiap
    sentuhan direkam lalu diteruskan ke aplikasi setelah jari diangkat. Tekan tombol
    kotak di panel untuk selesai, lalu beri nama dan simpan.
+6. **Auto clicker** di beranda membuka overlay pemilih titik di atas aplikasi sebelumnya:
+   geser titik, tambah titik/swipe, atur jeda dan jumlah ulang, uji, lalu simpan. Posisi
+   aksi macro yang sudah ada bisa diatur dengan cara yang sama lewat editor.
 
 ## Struktur
 

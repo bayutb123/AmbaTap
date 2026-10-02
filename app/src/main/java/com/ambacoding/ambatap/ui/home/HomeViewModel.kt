@@ -3,6 +3,10 @@ package com.ambacoding.ambatap.ui.home
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.ambacoding.ambatap.domain.model.Macro
+import com.ambacoding.ambatap.domain.model.MacroAction
+import com.ambacoding.ambatap.domain.model.PlaybackConfig
+import com.ambacoding.ambatap.domain.model.RepeatMode
+import com.ambacoding.ambatap.domain.model.ScreenInfo
 import com.ambacoding.ambatap.domain.model.totalDurationMs
 import com.ambacoding.ambatap.domain.repository.MacroRepository
 import com.ambacoding.ambatap.domain.repository.SettingsRepository
@@ -10,6 +14,8 @@ import com.ambacoding.ambatap.engine.player.MacroPlayer
 import com.ambacoding.ambatap.engine.player.PlaybackState
 import com.ambacoding.ambatap.service.ServiceBridge
 import com.ambacoding.ambatap.service.overlay.FloatingPanelState
+import com.ambacoding.ambatap.service.overlay.PointPickerRequests
+import com.ambacoding.ambatap.ui.components.defaultMacroName
 import com.ambacoding.ambatap.ui.components.label
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
@@ -55,6 +61,7 @@ class HomeViewModel @Inject constructor(
     private val player: MacroPlayer,
     serviceBridge: ServiceBridge,
     private val panelState: FloatingPanelState,
+    private val pickerRequests: PointPickerRequests,
 ) : ViewModel() {
 
     val uiState: StateFlow<HomeUiState> = combine(
@@ -77,6 +84,22 @@ class HomeViewModel @Inject constructor(
 
     /** Panel tampil; rekaman dimulai dari tombol merah di panel setelah user membuka aplikasi tujuan. */
     fun prepareRecording() = panelState.show()
+
+    /** Membuka overlay pemilih titik untuk auto clicker baru (satu titik di tengah, ulang terus). */
+    fun startAutoClicker(screen: ScreenInfo) {
+        val now = System.currentTimeMillis()
+        pickerRequests.open(
+            Macro(
+                name = defaultMacroName("Auto clicker", now),
+                actions = listOf(MacroAction.Tap(0.5f, 0.5f, delayBeforeMs = 100)),
+                screen = screen,
+                config = PlaybackConfig(repeat = RepeatMode.Infinite),
+                createdAt = now,
+                updatedAt = now,
+            ),
+        )
+        _events.trySend(HomeEvent.Minimize)
+    }
 
     fun togglePanel() {
         if (panelState.requested.value) panelState.hide() else panelState.show()

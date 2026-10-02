@@ -151,11 +151,17 @@ fun EditorScreen(
             }
             item { PlaybackSection(macro.config, onChange = viewModel::setConfig) }
             item {
-                Text(
-                    "Aksi  ${macro.actions.size}",
-                    style = MaterialTheme.typography.titleMedium,
-                    modifier = Modifier.padding(top = 4.dp),
-                )
+                Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(top = 4.dp)) {
+                    Text(
+                        "Aksi  ${macro.actions.size}",
+                        style = MaterialTheme.typography.titleMedium,
+                        modifier = Modifier.weight(1f),
+                    )
+                    TextButton(onClick = viewModel::editOnScreen) {
+                        Icon(AmbaIcons.Target, contentDescription = null, modifier = Modifier.padding(end = 6.dp))
+                        Text("Atur posisi di layar")
+                    }
+                }
             }
             itemsIndexed(macro.actions) { index, action ->
                 ActionRow(

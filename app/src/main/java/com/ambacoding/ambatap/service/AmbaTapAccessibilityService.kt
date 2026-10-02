@@ -18,6 +18,8 @@ import com.ambacoding.ambatap.engine.recorder.MacroRecorder
 import com.ambacoding.ambatap.service.notification.PlaybackNotifier
 import com.ambacoding.ambatap.service.overlay.FloatingPanelState
 import com.ambacoding.ambatap.service.overlay.PanelController
+import com.ambacoding.ambatap.service.overlay.PointPickerController
+import com.ambacoding.ambatap.service.overlay.PointPickerRequests
 import com.ambacoding.ambatap.service.overlay.RecordingController
 import dagger.hilt.android.AndroidEntryPoint
 import javax.inject.Inject
@@ -39,12 +41,14 @@ class AmbaTapAccessibilityService : AccessibilityService(), InputController {
     @Inject lateinit var notifier: PlaybackNotifier
     @Inject lateinit var recorder: MacroRecorder
     @Inject lateinit var macroRepository: MacroRepository
+    @Inject lateinit var pickerRequests: PointPickerRequests
 
     private val emergencyStop = EmergencyStopDetector()
 
     private var scope: CoroutineScope? = null
     private var panel: PanelController? = null
     private var recording: RecordingController? = null
+    private var picker: PointPickerController? = null
 
     override fun onServiceConnected() {
         super.onServiceConnected()
@@ -62,6 +66,8 @@ class AmbaTapAccessibilityService : AccessibilityService(), InputController {
         panel = PanelController(this, scope, player, recorder, recording, panelState, settingsRepository)
             .also { it.start() }
         recording.start()
+        picker = PointPickerController(this, scope, pickerRequests, player, macroRepository, settingsRepository)
+            .also { it.start() }
         scope.launch {
             player.state
                 .distinctUntilChangedBy { listOf(it.status, it.loop, it.macroName, (it.countdownMs + 999) / 1000) }
@@ -85,6 +91,8 @@ class AmbaTapAccessibilityService : AccessibilityService(), InputController {
         bridge.detach(this)
         recording?.destroy()
         recording = null
+        picker?.destroy()
+        picker = null
         panel?.destroy()
         panel = null
         scope?.cancel()

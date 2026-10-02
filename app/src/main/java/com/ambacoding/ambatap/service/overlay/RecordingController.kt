@@ -3,7 +3,6 @@ package com.ambacoding.ambatap.service.overlay
 import android.annotation.SuppressLint
 import android.content.Context
 import android.graphics.PixelFormat
-import android.os.Build
 import android.os.SystemClock
 import android.view.ContextThemeWrapper
 import android.view.Gravity
@@ -150,25 +149,7 @@ class RecordingController(
 
     @SuppressLint("ClickableViewAccessibility") // Lapisan ini bukan kontrol; sentuhan diteruskan apa adanya.
     private fun createLayer(): OverlayWindow {
-        val params = WindowManager.LayoutParams(
-            WindowManager.LayoutParams.MATCH_PARENT,
-            WindowManager.LayoutParams.MATCH_PARENT,
-            WindowManager.LayoutParams.TYPE_ACCESSIBILITY_OVERLAY,
-            WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
-                WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN or
-                WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS,
-            PixelFormat.TRANSLUCENT,
-        ).apply {
-            gravity = Gravity.TOP or Gravity.START
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
-                layoutInDisplayCutoutMode = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-                    WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_ALWAYS
-                } else {
-                    WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES
-                }
-            }
-        }
-        return OverlayWindow(themedContext, windowManager, params) {
+        return OverlayWindow(themedContext, windowManager, OverlayWindow.fullScreenParams()) {
             AmbaTapTheme(darkTheme = false) {
                 val state by recorder.state.collectAsStateWithLifecycle()
                 RecordLayer(state, liveTrail)

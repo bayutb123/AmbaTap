@@ -48,6 +48,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.style.TextOverflow
@@ -56,7 +57,10 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.ambacoding.ambatap.domain.model.ScreenInfo
 import com.ambacoding.ambatap.engine.player.PlaybackState
+import com.ambacoding.ambatap.service.realScreenSize
+import com.ambacoding.ambatap.service.screenRotation
 import com.ambacoding.ambatap.ui.components.AmbaIcons
 import com.ambacoding.ambatap.ui.components.formatClock
 import com.ambacoding.ambatap.ui.theme.AmbaTapTheme
@@ -71,6 +75,7 @@ class HomeActions(
     val onOpenPlayground: () -> Unit = {},
     val onTogglePanel: () -> Unit = {},
     val onRecord: () -> Unit = {},
+    val onAutoClicker: () -> Unit = {},
     val onPlay: (Long) -> Unit = {},
     val onStop: () -> Unit = {},
     val onRename: (Long, String) -> Unit = { _, _ -> },
@@ -88,6 +93,7 @@ fun HomeScreen(
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val activity = LocalActivity.current
+    val context = LocalContext.current
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
 
@@ -120,6 +126,10 @@ fun HomeScreen(
             onRecord = {
                 viewModel.prepareRecording()
                 activity?.moveTaskToBack(true)
+            },
+            onAutoClicker = {
+                val size = context.realScreenSize()
+                viewModel.startAutoClicker(ScreenInfo(size.widthPx, size.heightPx, context.screenRotation()))
             },
             onPlay = viewModel::play,
             onStop = viewModel::stop,
@@ -160,7 +170,7 @@ private fun HomeContent(
                 }
             }
             if (uiState.serviceConnected) {
-                item { ActionTiles(onRecord = actions.onRecord) }
+                item { ActionTiles(onRecord = actions.onRecord, onAutoClicker = actions.onAutoClicker) }
             }
             item {
                 Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(top = 8.dp)) {
@@ -292,7 +302,7 @@ private fun ServiceActiveCard(panelShown: Boolean, onTogglePanel: () -> Unit) {
 }
 
 @Composable
-private fun ActionTiles(onRecord: () -> Unit) {
+private fun ActionTiles(onRecord: () -> Unit, onAutoClicker: () -> Unit) {
     Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
         ActionTile(
             title = "Rekam macro",
@@ -301,6 +311,15 @@ private fun ActionTiles(onRecord: () -> Unit) {
             container = MaterialTheme.colorScheme.secondary,
             content = MaterialTheme.colorScheme.onSecondary,
             onClick = onRecord,
+            modifier = Modifier.weight(1f),
+        )
+        ActionTile(
+            title = "Auto clicker",
+            subtitle = "Atur titik secara manual",
+            icon = AmbaIcons.Target,
+            container = MaterialTheme.colorScheme.inverseSurface,
+            content = MaterialTheme.colorScheme.inverseOnSurface,
+            onClick = onAutoClicker,
             modifier = Modifier.weight(1f),
         )
     }

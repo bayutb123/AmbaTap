@@ -1,7 +1,10 @@
 package com.ambacoding.ambatap.service.overlay
 
 import android.content.Context
+import android.graphics.PixelFormat
 import android.graphics.Rect
+import android.os.Build
+import android.view.Gravity
 import android.view.WindowManager
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.platform.ComposeView
@@ -94,5 +97,28 @@ class OverlayWindow(
         lifecycleRegistry.currentState = Lifecycle.State.DESTROYED
         viewModelStore.clear()
         view.disposeComposition()
+    }
+
+    companion object {
+        /** Jendela overlay aksesibilitas yang menutup seluruh layar, termasuk area poni. */
+        fun fullScreenParams(extraFlags: Int = 0) = WindowManager.LayoutParams(
+            WindowManager.LayoutParams.MATCH_PARENT,
+            WindowManager.LayoutParams.MATCH_PARENT,
+            WindowManager.LayoutParams.TYPE_ACCESSIBILITY_OVERLAY,
+            WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
+                WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN or
+                WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS or
+                extraFlags,
+            PixelFormat.TRANSLUCENT,
+        ).apply {
+            gravity = Gravity.TOP or Gravity.START
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+                layoutInDisplayCutoutMode = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                    WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_ALWAYS
+                } else {
+                    WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES
+                }
+            }
+        }
     }
 }

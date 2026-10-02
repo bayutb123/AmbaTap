@@ -301,7 +301,8 @@ siapkan juga opsi distribusi via GitHub Releases/F-Droid). Tambahkan juga pandua
 - [x] Pengaturan playback per macro.
 
 ### Fase 5 — Auto clicker manual & editor (±4–5 hari)
-- [ ] Point picker overlay (tambah/geser/hapus titik, interval per titik).
+- [x] Point picker overlay (tambah/geser/hapus titik, interval per titik).
+      Dipakai untuk auto clicker baru dan tombol "Atur posisi di layar" di editor.
 - [x] Editor timeline: reorder, edit nilai, sisipkan Wait/Global/LaunchApp.
       Urutan diubah dengan tombol Naik/Turun (belum drag).
 - [x] Randomisasi posisi & jeda.
