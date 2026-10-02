@@ -22,10 +22,14 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
+import android.view.MotionEvent
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
@@ -33,6 +37,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.input.pointer.pointerInteropFilter
 import androidx.compose.ui.layout.LayoutCoordinates
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.semantics.Role
@@ -171,16 +176,62 @@ fun PickerBottomBar(
     selected: Int?,
     repeat: RepeatMode,
     screen: ScreenSize,
+    onDragBy: (Float, Float) -> Unit,
     callbacks: PickerActions,
 ) {
     Column(
-        verticalArrangement = Arrangement.spacedBy(10.dp),
-        modifier = Modifier.padding(start = 12.dp, end = 12.dp, top = 8.dp, bottom = 24.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+        modifier = Modifier.padding(4.dp),
     ) {
+        DragGrip(onDragBy)
         if (selected != null && selected in actions.indices) {
             SelectedPanel(selected, actions[selected], screen, callbacks)
         }
         Toolbar(repeat = repeat, canRun = actions.isNotEmpty(), callbacks = callbacks)
+    }
+}
+
+/**
+ * Gagang geser bar bawah. Memakai koordinat mentah MotionEvent karena jendelanya ikut
+ * berpindah saat digeser; koordinat lokal akan membuat gerakan tersendat.
+ */
+@OptIn(ExperimentalComposeUiApi::class)
+@Composable
+private fun DragGrip(onDragBy: (Float, Float) -> Unit) {
+    val currentOnDragBy by rememberUpdatedState(onDragBy)
+    var lastX by remember { mutableFloatStateOf(0f) }
+    var lastY by remember { mutableFloatStateOf(0f) }
+    Box(
+        contentAlignment = Alignment.Center,
+        modifier = Modifier
+            .size(width = 64.dp, height = 24.dp)
+            .background(Ink, RoundedCornerShape(50))
+            .semantics { contentDescription = "Geser toolbar" }
+            .pointerInteropFilter { event ->
+                when (event.actionMasked) {
+                    MotionEvent.ACTION_DOWN -> {
+                        lastX = event.rawX
+                        lastY = event.rawY
+                    }
+                    MotionEvent.ACTION_MOVE -> {
+                        currentOnDragBy(event.rawX - lastX, event.rawY - lastY)
+                        lastX = event.rawX
+                        lastY = event.rawY
+                    }
+                }
+                true
+            },
+    ) {
+        Column(verticalArrangement = Arrangement.spacedBy(3.dp)) {
+            repeat(2) {
+                Box(
+                    Modifier
+                        .size(width = 24.dp, height = 2.dp)
+                        .background(MutedDark, RoundedCornerShape(1.dp)),
+                )
+            }
+        }
     }
 }
 

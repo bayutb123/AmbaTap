@@ -330,10 +330,27 @@ class PointPickerController(
         }
     }
 
+    /**
+     * Bar bawah (panel titik + toolbar) mengambang dan bisa digeser lewat gagangnya, agar tidak
+     * menutupi bagian bawah aplikasi. Awalnya di tengah bawah; posisinya diingat selama sesi.
+     */
     private fun createBottomBar() = OverlayWindow(
         themedContext,
         windowManager,
-        barParams(Gravity.BOTTOM, WindowManager.LayoutParams.MATCH_PARENT, yDp = 0),
+        WindowManager.LayoutParams(
+            bottomBarWidthPx(),
+            WindowManager.LayoutParams.WRAP_CONTENT,
+            WindowManager.LayoutParams.TYPE_ACCESSIBILITY_OVERLAY,
+            WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
+                WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL or
+                WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN or
+                WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS,
+            PixelFormat.TRANSLUCENT,
+        ).apply {
+            gravity = Gravity.TOP or Gravity.START
+            x = (screen.widthPx - width) / 2
+            y = screen.heightPx
+        },
     ) {
         AmbaTapTheme(darkTheme = false) {
             PickerBottomBar(
@@ -341,6 +358,7 @@ class PointPickerController(
                 selected = selected,
                 repeat = config.repeat,
                 screen = screen,
+                onDragBy = ::moveBottomBar,
                 callbacks = PickerActions(
                     onDeselect = { select(null) },
                     onChange = { index, action ->
@@ -373,6 +391,34 @@ class PointPickerController(
                 ),
             )
         }
+    }.also { bar ->
+        // Saat tinggi berubah (panel titik muncul/hilang) atau pertama kali tampil, jaga tetap di layar.
+        bar.view.addOnLayoutChangeListener { _, _, _, _, _, _, _, _, _ -> moveBottomBar(0f, 0f) }
+    }
+
+    private var bottomBarPlaced = false
+
+    private fun bottomBarWidthPx(): Int =
+        minOf(screen.widthPx - (BAR_MARGIN_DP * 2 * density).roundToInt(), (BAR_MAX_WIDTH_DP * density).roundToInt())
+
+    private fun moveBottomBar(dx: Float, dy: Float) {
+        val bar = bottomBar ?: return
+        val height = bar.view.height
+        if (height == 0) return
+        val params = bar.params
+        val margin = (BAR_MARGIN_DP * density).roundToInt()
+        val maxX = (screen.widthPx - params.width).coerceAtLeast(0)
+        val maxY = (screen.heightPx - height - margin).coerceAtLeast(0)
+        val baseY = if (bottomBarPlaced) params.y else maxY
+        bottomBarPlaced = true
+        val newX = (params.x + dx.roundToInt()).coerceIn(0, maxX)
+        val newY = (baseY + dy.roundToInt()).coerceIn(0, maxY)
+        // Hanya update bila berubah: dipanggil dari layout listener, update memicu layout lagi.
+        if (newX == params.x && newY == params.y) return
+        bar.update {
+            x = newX
+            y = newY
+        }
     }
 
     // endregion
@@ -395,6 +441,8 @@ class PointPickerController(
 
     private companion object {
         const val DEFAULT_INTERVAL_MS = 100L
+        const val BAR_MARGIN_DP = 12
+        const val BAR_MAX_WIDTH_DP = 400
 
         /** Urutan pilihan tombol "Ulang" di toolbar. */
         val RepeatCycle = listOf(RepeatMode.Count(1), RepeatMode.Count(10), RepeatMode.Count(100), RepeatMode.Infinite)
