@@ -3,6 +3,9 @@ package com.ambacoding.ambatap.service
 import android.content.Context
 import android.os.Build
 import android.util.DisplayMetrics
+import android.hardware.display.DisplayManager
+import android.view.Display
+import android.view.Surface
 import android.view.WindowManager
 import com.ambacoding.ambatap.engine.player.ScreenSize
 
@@ -19,3 +22,12 @@ fun Context.realScreenSize(): ScreenSize {
         ScreenSize(metrics.widthPixels, metrics.heightPixels)
     }
 }
+
+/**
+ * Salah satu konstanta `Surface.ROTATION_*`. Lewat `DisplayManager` karena `Context.display`
+ * melempar exception pada context yang tidak terikat ke layar.
+ */
+fun Context.screenRotation(): Int =
+    getSystemService(DisplayManager::class.java)
+        .getDisplay(Display.DEFAULT_DISPLAY)
+        ?.rotation ?: Surface.ROTATION_0

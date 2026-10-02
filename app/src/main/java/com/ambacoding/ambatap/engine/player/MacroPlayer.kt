@@ -86,6 +86,11 @@ class MacroPlayer(
         }
     }
 
+    /** Menjadikan [macro] sasaran tombol putar di panel tanpa memutarnya. */
+    fun load(macro: Macro) {
+        _lastMacro.value = macro
+    }
+
     fun pause() {
         if (_state.value.status != Status.PLAYING) return
         paused.value = true

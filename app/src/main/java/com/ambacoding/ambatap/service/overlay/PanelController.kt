@@ -14,6 +14,8 @@ import com.ambacoding.ambatap.domain.model.AppSettings
 import com.ambacoding.ambatap.domain.repository.SettingsRepository
 import com.ambacoding.ambatap.engine.player.GestureSpec
 import com.ambacoding.ambatap.engine.player.MacroPlayer
+import com.ambacoding.ambatap.engine.recorder.MacroRecorder
+import com.ambacoding.ambatap.engine.recorder.RecordingState
 import com.ambacoding.ambatap.service.realScreenSize
 import com.ambacoding.ambatap.ui.theme.AmbaTapTheme
 import kotlin.math.roundToInt
@@ -27,13 +29,15 @@ import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
 /**
- * Mengelola jendela panel melayang: tampil bila diminta user atau selama macro aktif,
+ * Mengelola jendela panel melayang: tampil bila diminta user, selama macro aktif, atau selama merekam,
  * bisa digeser, dan sementara ditembus saat gesture macro jatuh di atasnya.
  */
 class PanelController(
     private val context: Context,
     private val scope: CoroutineScope,
     private val player: MacroPlayer,
+    private val recorder: MacroRecorder,
+    private val recording: RecordingController,
     private val panelState: FloatingPanelState,
     settingsRepository: SettingsRepository,
 ) {
@@ -51,7 +55,8 @@ class PanelController(
             combine(
                 panelState.requested,
                 player.state.map { it.isActive }.distinctUntilChanged(),
-            ) { requested, active -> requested || active }
+                recorder.state.map { it.isCapturing }.distinctUntilChanged(),
+            ) { requested, playing, capturing -> requested || playing || capturing }
                 .distinctUntilChanged()
                 .collect { visible -> if (visible) show() else hide() }
         }
@@ -84,6 +89,14 @@ class PanelController(
         window.show()
     }
 
+    /** Pasang ulang jendela panel agar berada di atas overlay yang baru ditambahkan. */
+    fun bringToFront() {
+        if (created && window.isShowing) {
+            window.hide()
+            window.show()
+        }
+    }
+
     private fun hide() {
         if (created) window.hide()
     }
@@ -111,19 +124,28 @@ class PanelController(
                 val playback by player.state.collectAsStateWithLifecycle()
                 val lastMacro by player.lastMacro.collectAsStateWithLifecycle()
                 val appSettings by settings.collectAsStateWithLifecycle()
+                val recordingState by recorder.state.collectAsStateWithLifecycle()
                 FloatingPanel(
                     state = playback,
-                    canPlay = lastMacro != null,
+                    recording = recordingState.status,
+                    canPlay = lastMacro != null && recordingState.status == RecordingState.Status.IDLE,
                     idleOpacity = appSettings.panelIdleOpacity,
-                    onDrag = { moveBy(it.x, it.y) },
-                    onPlay = {
-                        lastMacro?.let { player.play(it, appSettings.countdownSeconds * 1_000L) }
-                    },
-                    onPause = player::pause,
-                    onResume = player::resume,
-                    onStop = player::stop,
-                    onOpenApp = ::openApp,
-                    onClose = panelState::hide,
+                    actions = PanelActions(
+                        onDrag = { moveBy(it.x, it.y) },
+                        onPlay = {
+                            lastMacro?.let { player.play(it, appSettings.countdownSeconds * 1_000L) }
+                        },
+                        onPause = player::pause,
+                        onResume = player::resume,
+                        onStop = player::stop,
+                        onOpenApp = ::openApp,
+                        onClose = panelState::hide,
+                        onRecord = recording::startRecording,
+                        onFinishRecording = recording::finish,
+                        onPauseRecording = recording::pause,
+                        onResumeRecording = recording::resume,
+                        onCancelRecording = recording::cancel,
+                    ),
                 )
             }
         }.also { overlay ->

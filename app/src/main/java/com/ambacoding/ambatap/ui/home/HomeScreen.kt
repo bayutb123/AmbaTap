@@ -1,5 +1,6 @@
 package com.ambacoding.ambatap.ui.home
 
+import androidx.activity.compose.LocalActivity
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -43,6 +44,7 @@ fun HomeScreen(
     viewModel: HomeViewModel = hiltViewModel(),
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val activity = LocalActivity.current
     HomeContent(
         uiState = uiState,
         onOpenSettings = onOpenSettings,
@@ -50,6 +52,10 @@ fun HomeScreen(
         onOpenMacro = onOpenMacro,
         onOpenPlayground = onOpenPlayground,
         onTogglePanel = viewModel::togglePanel,
+        onRecord = {
+            viewModel.prepareRecording()
+            activity?.moveTaskToBack(true)
+        },
     )
 }
 
@@ -61,6 +67,7 @@ private fun HomeContent(
     onOpenMacro: (Long) -> Unit,
     onOpenPlayground: () -> Unit,
     onTogglePanel: () -> Unit,
+    onRecord: () -> Unit,
 ) {
     Scaffold(containerColor = MaterialTheme.colorScheme.background) { innerPadding ->
         LazyColumn(
@@ -99,6 +106,11 @@ private fun HomeContent(
                     } else {
                         ServiceBanner(onActivate = onOpenOnboarding)
                     }
+                }
+            }
+            if (uiState.serviceConnected) {
+                item {
+                    RecordCard(onRecord = onRecord)
                 }
             }
             item {
@@ -181,6 +193,30 @@ private fun ServiceActiveCard(panelShown: Boolean, onTogglePanel: () -> Unit) {
 }
 
 @Composable
+private fun RecordCard(onRecord: () -> Unit) {
+    Card(
+        onClick = onRecord,
+        shape = RoundedCornerShape(20.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.secondary,
+            contentColor = MaterialTheme.colorScheme.onSecondary,
+        ),
+        modifier = Modifier.fillMaxWidth(),
+    ) {
+        Column(
+            modifier = Modifier.padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(2.dp),
+        ) {
+            Text("Rekam macro", style = MaterialTheme.typography.titleMedium)
+            Text(
+                "Buka aplikasi tujuan, lalu tekan tombol merah di panel",
+                style = MaterialTheme.typography.bodyMedium,
+            )
+        }
+    }
+}
+
+@Composable
 private fun PlaygroundCard(onClick: () -> Unit) {
     OutlinedCard(
         onClick = onClick,
@@ -239,6 +275,7 @@ private fun HomePreview() {
             onOpenMacro = {},
             onOpenPlayground = {},
             onTogglePanel = {},
+            onRecord = {},
         )
     }
 }

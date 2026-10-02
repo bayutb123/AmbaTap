@@ -8,14 +8,17 @@ import android.view.KeyEvent
 import android.view.accessibility.AccessibilityEvent
 import android.view.accessibility.AccessibilityNodeInfo
 import com.ambacoding.ambatap.domain.model.GlobalType
+import com.ambacoding.ambatap.domain.repository.MacroRepository
 import com.ambacoding.ambatap.domain.repository.SettingsRepository
 import com.ambacoding.ambatap.engine.player.GestureSpec
 import com.ambacoding.ambatap.engine.player.InputController
 import com.ambacoding.ambatap.engine.player.MacroPlayer
 import com.ambacoding.ambatap.engine.player.ScreenSize
+import com.ambacoding.ambatap.engine.recorder.MacroRecorder
 import com.ambacoding.ambatap.service.notification.PlaybackNotifier
 import com.ambacoding.ambatap.service.overlay.FloatingPanelState
 import com.ambacoding.ambatap.service.overlay.PanelController
+import com.ambacoding.ambatap.service.overlay.RecordingController
 import dagger.hilt.android.AndroidEntryPoint
 import javax.inject.Inject
 import kotlin.coroutines.resume
@@ -34,16 +37,31 @@ class AmbaTapAccessibilityService : AccessibilityService(), InputController {
     @Inject lateinit var panelState: FloatingPanelState
     @Inject lateinit var settingsRepository: SettingsRepository
     @Inject lateinit var notifier: PlaybackNotifier
+    @Inject lateinit var recorder: MacroRecorder
+    @Inject lateinit var macroRepository: MacroRepository
 
     private val emergencyStop = EmergencyStopDetector()
 
     private var scope: CoroutineScope? = null
     private var panel: PanelController? = null
+    private var recording: RecordingController? = null
 
     override fun onServiceConnected() {
         super.onServiceConnected()
         val scope = MainScope().also { scope = it }
-        panel = PanelController(this, scope, player, panelState, settingsRepository).also { it.start() }
+        val recording = RecordingController(
+            context = this,
+            scope = scope,
+            recorder = recorder,
+            player = player,
+            repository = macroRepository,
+            settingsRepository = settingsRepository,
+            input = this,
+            bringPanelToFront = { panel?.bringToFront() },
+        ).also { recording = it }
+        panel = PanelController(this, scope, player, recorder, recording, panelState, settingsRepository)
+            .also { it.start() }
+        recording.start()
         scope.launch {
             player.state
                 .distinctUntilChangedBy { listOf(it.status, it.loop, it.macroName, (it.countdownMs + 999) / 1000) }
@@ -65,6 +83,8 @@ class AmbaTapAccessibilityService : AccessibilityService(), InputController {
     private fun detach() {
         player.stop()
         bridge.detach(this)
+        recording?.destroy()
+        recording = null
         panel?.destroy()
         panel = null
         scope?.cancel()

@@ -59,6 +59,12 @@ object AmbaIcons {
         }
     }
 
+    val Record: ImageVector by lazy {
+        fillIcon("Record") {
+            circle(12f, 12f, 7f)
+        }
+    }
+
     val Stop: ImageVector by lazy {
         fillIcon("Stop") {
             rect(6f, 6f, 12f, 12f)

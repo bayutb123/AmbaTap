@@ -286,12 +286,13 @@ siapkan juga opsi distribusi via GitHub Releases/F-Droid). Tambahkan juga pandua
 - [x] Hitung mundur 3-2-1 sebelum mulai (dari pengaturan, saat diputar lewat panel).
 
 ### Fase 3 — Perekaman (±4–5 hari)
-- [ ] Record layer full-screen (`TYPE_ACCESSIBILITY_OVERLAY`).
-- [ ] `GestureClassifier` (tap / long press / swipe) + simplifikasi path
+- [x] Record layer full-screen (`TYPE_ACCESSIBILITY_OVERLAY`).
+- [x] `GestureClassifier` (tap / long press / swipe) + simplifikasi path
       (Ramer–Douglas–Peucker) agar jumlah titik swipe wajar.
-- [ ] Forward sentuhan ke app di bawah (toggle `FLAG_NOT_TOUCHABLE` → dispatch → restore).
-- [ ] Abaikan sentuhan di area floating panel; catat jeda antar aksi.
-- [ ] Simpan hasil rekaman → dialog nama macro.
+- [x] Forward sentuhan ke app di bawah (toggle `FLAG_NOT_TOUCHABLE` → dispatch → restore).
+      Jeda antar aksi diukur dari gesture yang diteruskan, bukan sentuhan asli.
+- [x] Abaikan sentuhan di area floating panel; catat jeda antar aksi.
+- [x] Simpan hasil rekaman → dialog nama macro (sheet overlay: nama, ulangi, uji putar, buang).
 - **Selesai bila:** rekam di app nyata (mis. kalkulator) → putar ulang hasil identik.
 
 ### Fase 4 — Persistensi & manajemen macro (±2–3 hari)

@@ -41,6 +41,9 @@ class HomeViewModel @Inject constructor(
         )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), HomeUiState())
 
+    /** Panel tampil; rekaman dimulai dari tombol merah di panel setelah user membuka aplikasi tujuan. */
+    fun prepareRecording() = panelState.show()
+
     fun togglePanel() {
         if (panelState.requested.value) panelState.hide() else panelState.show()
     }

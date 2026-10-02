@@ -37,6 +37,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.ambacoding.ambatap.engine.player.PlaybackState
 import com.ambacoding.ambatap.engine.player.PlaybackState.Status
+import com.ambacoding.ambatap.engine.recorder.RecordingState
 import com.ambacoding.ambatap.ui.components.AmbaIcons
 import com.ambacoding.ambatap.ui.theme.Ink
 import com.ambacoding.ambatap.ui.theme.MonoStyle
@@ -46,26 +47,38 @@ import com.ambacoding.ambatap.ui.theme.PlayBlueDark
 import com.ambacoding.ambatap.ui.theme.RecordOrange
 import com.ambacoding.ambatap.ui.theme.SurfaceVariantDark
 
-/** Panel gelap yang bisa digeser; bentuknya mengikuti status pemutaran. */
+/** Aksi yang bisa dipicu dari panel melayang. */
+class PanelActions(
+    val onDrag: (Offset) -> Unit,
+    val onPlay: () -> Unit,
+    val onPause: () -> Unit,
+    val onResume: () -> Unit,
+    val onStop: () -> Unit,
+    val onOpenApp: () -> Unit,
+    val onClose: () -> Unit,
+    val onRecord: () -> Unit,
+    val onFinishRecording: () -> Unit,
+    val onPauseRecording: () -> Unit,
+    val onResumeRecording: () -> Unit,
+    val onCancelRecording: () -> Unit,
+)
+
+/** Panel gelap yang bisa digeser; bentuknya mengikuti status perekaman dan pemutaran. */
 @Composable
 fun FloatingPanel(
     state: PlaybackState,
+    recording: RecordingState.Status,
     canPlay: Boolean,
     idleOpacity: Float,
-    onDrag: (Offset) -> Unit,
-    onPlay: () -> Unit,
-    onPause: () -> Unit,
-    onResume: () -> Unit,
-    onStop: () -> Unit,
-    onOpenApp: () -> Unit,
-    onClose: () -> Unit,
+    actions: PanelActions,
 ) {
-    val currentOnDrag by rememberUpdatedState(onDrag)
+    val currentOnDrag by rememberUpdatedState(actions.onDrag)
+    val capturing = recording == RecordingState.Status.RECORDING || recording == RecordingState.Status.PAUSED
     val shape = RoundedCornerShape(20.dp)
     Box(
         modifier = Modifier
             .padding(8.dp)
-            .alpha(if (state.isActive) 1f else idleOpacity)
+            .alpha(if (state.isActive || capturing) 1f else idleOpacity)
             .shadow(8.dp, shape)
             .background(Ink, shape)
             .pointerInput(Unit) {
@@ -76,35 +89,61 @@ fun FloatingPanel(
             }
             .padding(8.dp),
     ) {
-        when (state.status) {
-            Status.IDLE -> IdleContent(canPlay, onPlay, onOpenApp, onClose)
-            Status.COUNTDOWN -> CountdownContent(state, onStop)
-            Status.PLAYING, Status.PAUSED -> PlayingContent(state, onPause, onResume, onStop)
+        when {
+            capturing -> RecordingContent(paused = recording == RecordingState.Status.PAUSED, actions)
+            state.status == Status.IDLE ->
+                IdleContent(canPlay = canPlay, canRecord = recording == RecordingState.Status.IDLE, actions)
+            state.status == Status.COUNTDOWN -> CountdownContent(state, actions.onStop)
+            else -> PlayingContent(state, actions.onPause, actions.onResume, actions.onStop)
         }
     }
 }
 
 @Composable
-private fun IdleContent(
-    canPlay: Boolean,
-    onPlay: () -> Unit,
-    onOpenApp: () -> Unit,
-    onClose: () -> Unit,
-) {
+private fun IdleContent(canPlay: Boolean, canRecord: Boolean, actions: PanelActions) {
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
         DragHandle()
         PanelIconButton(
+            icon = AmbaIcons.Record,
+            label = "Mulai merekam",
+            onClick = actions.onRecord,
+            container = RecordOrange,
+            enabled = canRecord,
+        )
+        PanelIconButton(
             icon = AmbaIcons.Play,
             label = "Putar macro terakhir",
-            onClick = onPlay,
+            onClick = actions.onPlay,
             container = PlayBlue,
             enabled = canPlay,
         )
-        PanelIconButton(icon = AmbaIcons.OpenApp, label = "Buka AmbaTap", onClick = onOpenApp)
-        PanelIconButton(icon = AmbaIcons.Close, label = "Tutup panel", onClick = onClose)
+        PanelIconButton(icon = AmbaIcons.OpenApp, label = "Buka AmbaTap", onClick = actions.onOpenApp)
+        PanelIconButton(icon = AmbaIcons.Close, label = "Tutup panel", onClick = actions.onClose)
+    }
+}
+
+@Composable
+private fun RecordingContent(paused: Boolean, actions: PanelActions) {
+    Column(
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        DragHandle()
+        PanelIconButton(
+            icon = AmbaIcons.Stop,
+            label = "Selesai merekam",
+            onClick = actions.onFinishRecording,
+            container = RecordOrange,
+        )
+        PanelIconButton(
+            icon = if (paused) AmbaIcons.Record else AmbaIcons.Pause,
+            label = if (paused) "Lanjut merekam" else "Jeda rekaman",
+            onClick = if (paused) actions.onResumeRecording else actions.onPauseRecording,
+        )
+        PanelIconButton(icon = AmbaIcons.Close, label = "Batalkan rekaman", onClick = actions.onCancelRecording)
     }
 }
 

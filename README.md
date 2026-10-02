@@ -31,6 +31,10 @@ Bila SDK tidak terdeteksi otomatis, buat `local.properties` berisi `sdk.dir=/pat
    Tombol putar di panel menjalankan ulang macro terakhir setelah hitung mundur
    (atur di Pengaturan). Selama macro berjalan, panel dan notifikasi menyediakan
    tombol Jeda dan Berhenti.
+5. **Rekam macro** di beranda memunculkan panel lalu meminimalkan AmbaTap. Buka aplikasi
+   tujuan, tekan tombol merah di panel, lalu lakukan tap/swipe seperti biasa: setiap
+   sentuhan direkam lalu diteruskan ke aplikasi setelah jari diangkat. Tekan tombol
+   kotak di panel untuk selesai, lalu beri nama dan simpan.
 
 ## Struktur
 
