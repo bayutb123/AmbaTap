@@ -4,8 +4,6 @@ import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.gestures.detectDragGestures
-import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -13,11 +11,8 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.navigationBarsPadding
-import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -29,7 +24,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -39,22 +33,19 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.LayoutCoordinates
 import androidx.compose.ui.layout.onGloballyPositioned
-import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.unit.IntOffset
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.ambacoding.ambatap.domain.model.MacroAction
 import com.ambacoding.ambatap.domain.model.RepeatMode
 import com.ambacoding.ambatap.domain.model.withDelay
 import com.ambacoding.ambatap.domain.model.withDuration
-import com.ambacoding.ambatap.domain.model.withEndpoints
 import com.ambacoding.ambatap.engine.player.ScreenSize
 import com.ambacoding.ambatap.ui.components.AmbaIcons
 import com.ambacoding.ambatap.ui.components.SegmentedRow
@@ -63,11 +54,16 @@ import com.ambacoding.ambatap.ui.theme.Ink
 import com.ambacoding.ambatap.ui.theme.MonoStyle
 import com.ambacoding.ambatap.ui.theme.MutedDark
 import com.ambacoding.ambatap.ui.theme.PlayBlue
-import com.ambacoding.ambatap.ui.theme.RecordOrange
 import kotlin.math.roundToInt
 
+/*
+ * Pemilih titik terdiri dari beberapa jendela overlay terpisah agar aplikasi di bawahnya
+ * tetap bisa disentuh: lapisan jalur (tembus sentuh), satu jendela kecil per penanda,
+ * bar atas, dan bar bawah. Lihat PointPickerController.
+ */
+
 class PickerActions(
-    val onSelect: (Int?) -> Unit,
+    val onDeselect: () -> Unit,
     val onChange: (Int, MacroAction) -> Unit,
     val onDelete: (Int) -> Unit,
     val onAddTap: () -> Unit,
@@ -78,197 +74,113 @@ class PickerActions(
     val onClose: () -> Unit,
 )
 
-/**
- * Overlay layar penuh untuk menaruh dan menggeser titik tap, long press, dan swipe.
- * Aksi lain (tunggu, aksi global, dll.) tetap di urutannya tetapi tidak digambar.
- */
+/** Tampilan satu penanda; ukurannya sama dengan jendelanya. */
+data class MarkerUi(
+    val label: String,
+    val color: Color,
+    val selected: Boolean,
+    val size: Dp,
+)
+
+val MarkerSize = 48.dp
+val SmallMarkerSize = 36.dp
+
+val MacroAction.isPositional: Boolean
+    get() = this is MacroAction.Tap || this is MacroAction.LongPress || this is MacroAction.Swipe
+
+/** Lapisan layar penuh yang hanya menggambar jalur swipe; jendelanya tidak bisa disentuh. */
 @Composable
-fun PointPicker(
-    name: String,
-    actions: List<MacroAction>,
-    repeat: RepeatMode,
-    selected: Int?,
-    screen: ScreenSize,
-    callbacks: PickerActions,
-) {
+fun PickerPaths(actions: List<MacroAction>, screen: ScreenSize) {
     var coords by remember { mutableStateOf<LayoutCoordinates?>(null) }
-    val positional = actions.count { it.isPositional }
-
-    Box(
-        modifier = Modifier
+    Canvas(
+        Modifier
             .fillMaxSize()
-            .background(Ink.copy(alpha = 0.12f))
-            .onGloballyPositioned { coords = it }
-            .pointerInput(Unit) { detectTapGestures { callbacks.onSelect(null) } },
+            .onGloballyPositioned { coords = it },
     ) {
-        val layout = coords
-        if (layout != null) {
-            fun local(nx: Float, ny: Float) = layout.screenToLocal(Offset(nx * screen.widthPx, ny * screen.heightPx))
-            fun dxN(px: Float) = px / screen.widthPx
-            fun dyN(px: Float) = px / screen.heightPx
-
-            Canvas(Modifier.fillMaxSize()) {
-                actions.filterIsInstance<MacroAction.Swipe>().forEach { swipe ->
-                    if (swipe.points.size < 2) return@forEach
-                    val path = Path().apply {
-                        val p0 = local(swipe.points.first().x, swipe.points.first().y)
-                        moveTo(p0.x, p0.y)
-                        swipe.points.drop(1).forEach { p -> local(p.x, p.y).let { lineTo(it.x, it.y) } }
-                    }
-                    drawPath(path, PlayBlue, style = Stroke(4.dp.toPx()))
-                }
+        val layout = coords ?: return@Canvas
+        fun local(nx: Float, ny: Float) = layout.screenToLocal(Offset(nx * screen.widthPx, ny * screen.heightPx))
+        actions.filterIsInstance<MacroAction.Swipe>().forEach { swipe ->
+            if (swipe.points.size < 2) return@forEach
+            val path = Path().apply {
+                val p0 = local(swipe.points.first().x, swipe.points.first().y)
+                moveTo(p0.x, p0.y)
+                swipe.points.drop(1).forEach { p -> local(p.x, p.y).let { lineTo(it.x, it.y) } }
             }
-
-            actions.forEachIndexed { index, action ->
-                val number = "${index + 1}"
-                when (action) {
-                    is MacroAction.Tap -> Marker(
-                        center = local(action.x, action.y),
-                        label = number,
-                        color = PlayBlue,
-                        selected = selected == index,
-                        onSelect = { callbacks.onSelect(index) },
-                        onDrag = { d ->
-                            callbacks.onChange(index, action.copy(x = (action.x + dxN(d.x)).clamp(), y = (action.y + dyN(d.y)).clamp()))
-                        },
-                    )
-                    is MacroAction.LongPress -> Marker(
-                        center = local(action.x, action.y),
-                        label = number,
-                        color = RecordOrange,
-                        selected = selected == index,
-                        onSelect = { callbacks.onSelect(index) },
-                        onDrag = { d ->
-                            callbacks.onChange(index, action.copy(x = (action.x + dxN(d.x)).clamp(), y = (action.y + dyN(d.y)).clamp()))
-                        },
-                    )
-                    is MacroAction.Swipe -> if (action.points.isNotEmpty()) {
-                        val start = action.points.first()
-                        val end = action.points.last()
-                        Marker(
-                            center = local(start.x, start.y),
-                            label = number,
-                            color = PlayBlue,
-                            selected = selected == index,
-                            onSelect = { callbacks.onSelect(index) },
-                            onDrag = { d ->
-                                callbacks.onChange(
-                                    index,
-                                    action.withEndpoints((start.x + dxN(d.x)).clamp(), (start.y + dyN(d.y)).clamp(), end.x, end.y),
-                                )
-                            },
-                        )
-                        Marker(
-                            center = local(end.x, end.y),
-                            label = "›",
-                            color = PlayBlue,
-                            selected = selected == index,
-                            small = true,
-                            onSelect = { callbacks.onSelect(index) },
-                            onDrag = { d ->
-                                callbacks.onChange(
-                                    index,
-                                    action.withEndpoints(start.x, start.y, (end.x + dxN(d.x)).clamp(), (end.y + dyN(d.y)).clamp()),
-                                )
-                            },
-                        )
-                    }
-                    else -> Unit
-                }
-            }
-        }
-
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-            modifier = Modifier
-                .align(Alignment.TopCenter)
-                .statusBarsPadding()
-                .padding(top = 8.dp),
-        ) {
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                modifier = Modifier
-                    .background(Ink, RoundedCornerShape(50))
-                    .padding(horizontal = 14.dp, vertical = 8.dp),
-            ) {
-                Text(name, color = Color.White, fontWeight = FontWeight.SemiBold, fontSize = 13.sp, maxLines = 1)
-                Text("$positional titik · ulang ${repeat.label()}", style = MonoStyle, color = MutedDark)
-            }
-            Box(
-                contentAlignment = Alignment.Center,
-                modifier = Modifier
-                    .size(40.dp)
-                    .clip(CircleShape)
-                    .background(Ink)
-                    .clickable(role = Role.Button, onClick = callbacks.onClose)
-                    .semantics { contentDescription = "Tutup tanpa menyimpan" },
-            ) {
-                Icon(AmbaIcons.Close, contentDescription = null, tint = Color.White, modifier = Modifier.size(18.dp))
-            }
-        }
-
-        Column(
-            verticalArrangement = Arrangement.spacedBy(10.dp),
-            modifier = Modifier
-                .align(Alignment.BottomCenter)
-                .navigationBarsPadding()
-                .padding(12.dp),
-        ) {
-            val index = selected
-            if (index != null && index in actions.indices) {
-                SelectedPanel(index, actions[index], screen, callbacks)
-            }
-            Toolbar(repeat = repeat, canRun = actions.isNotEmpty(), callbacks = callbacks)
+            drawPath(path, PlayBlue, style = Stroke(4.dp.toPx()))
         }
     }
 }
 
-private val MacroAction.isPositional: Boolean
-    get() = this is MacroAction.Tap || this is MacroAction.LongPress || this is MacroAction.Swipe
-
-private fun Float.clamp() = coerceIn(0f, 1f)
-
+/** Penanda titik. Tidak punya pointer input: geser dan pilih ditangani jendelanya (koordinat mentah). */
 @Composable
-private fun Marker(
-    center: Offset,
-    label: String,
-    color: Color,
-    selected: Boolean,
-    onSelect: () -> Unit,
-    onDrag: (Offset) -> Unit,
-    small: Boolean = false,
-) {
-    val size = if (small) 36.dp else 48.dp
-    val half = with(LocalDensity.current) { size.toPx() / 2 }
-    val currentOnSelect by rememberUpdatedState(onSelect)
-    val currentOnDrag by rememberUpdatedState(onDrag)
+fun PickerMarker(ui: MarkerUi) {
     Box(
         contentAlignment = Alignment.Center,
         modifier = Modifier
-            .offset { IntOffset((center.x - half).roundToInt(), (center.y - half).roundToInt()) }
-            .size(size)
-            .then(if (selected) Modifier.border(4.dp, Color.White, CircleShape) else Modifier)
-            .background(color.copy(alpha = if (selected) 0.35f else 0.18f), CircleShape)
-            .border(3.dp, color, CircleShape)
-            .pointerInput(Unit) {
-                detectDragGestures(onDragStart = { currentOnSelect() }) { change, drag ->
-                    change.consume()
-                    currentOnDrag(drag)
-                }
-            }
-            .pointerInput(Unit) { detectTapGestures { currentOnSelect() } }
-            .semantics { contentDescription = "Titik $label" },
+            .size(ui.size)
+            .then(if (ui.selected) Modifier.border(4.dp, Color.White, CircleShape) else Modifier)
+            .background(ui.color.copy(alpha = if (ui.selected) 0.4f else 0.22f), CircleShape)
+            .border(3.dp, ui.color, CircleShape)
+            .semantics { contentDescription = "Titik ${ui.label}" },
     ) {
         Box(
             contentAlignment = Alignment.Center,
             modifier = Modifier
                 .size(22.dp)
-                .background(color, CircleShape),
+                .background(ui.color, CircleShape),
         ) {
-            Text(label, color = Color.White, style = MonoStyle, fontSize = 11.sp)
+            Text(ui.label, color = Color.White, style = MonoStyle, fontSize = 11.sp)
         }
+    }
+}
+
+@Composable
+fun PickerTopBar(name: String, positional: Int, repeat: RepeatMode, onClose: () -> Unit) {
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        modifier = Modifier.padding(8.dp),
+    ) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            modifier = Modifier
+                .background(Ink, RoundedCornerShape(50))
+                .padding(horizontal = 14.dp, vertical = 8.dp),
+        ) {
+            Text(name, color = Color.White, fontWeight = FontWeight.SemiBold, fontSize = 13.sp, maxLines = 1)
+            Text("$positional titik · ulang ${repeat.label()}", style = MonoStyle, color = MutedDark)
+        }
+        Box(
+            contentAlignment = Alignment.Center,
+            modifier = Modifier
+                .size(40.dp)
+                .clip(CircleShape)
+                .background(Ink)
+                .clickable(role = Role.Button, onClick = onClose)
+                .semantics { contentDescription = "Tutup tanpa menyimpan" },
+        ) {
+            Icon(AmbaIcons.Close, contentDescription = null, tint = Color.White, modifier = Modifier.size(18.dp))
+        }
+    }
+}
+
+@Composable
+fun PickerBottomBar(
+    actions: List<MacroAction>,
+    selected: Int?,
+    repeat: RepeatMode,
+    screen: ScreenSize,
+    callbacks: PickerActions,
+) {
+    Column(
+        verticalArrangement = Arrangement.spacedBy(10.dp),
+        modifier = Modifier.padding(start = 12.dp, end = 12.dp, top = 8.dp, bottom = 24.dp),
+    ) {
+        if (selected != null && selected in actions.indices) {
+            SelectedPanel(selected, actions[selected], screen, callbacks)
+        }
+        Toolbar(repeat = repeat, canRun = actions.isNotEmpty(), callbacks = callbacks)
     }
 }
 
@@ -301,10 +213,9 @@ private fun SelectedPanel(index: Int, action: MacroAction, screen: ScreenSize, c
         }
         when (action) {
             is MacroAction.Tap, is MacroAction.LongPress -> {
-                val isLong = action is MacroAction.LongPress
                 SegmentedRow(
                     options = listOf("Tap", "Tahan"),
-                    selected = if (isLong) 1 else 0,
+                    selected = if (action is MacroAction.LongPress) 1 else 0,
                     onSelect = { choice ->
                         val converted = when {
                             choice == 1 && action is MacroAction.Tap ->
@@ -330,8 +241,12 @@ private fun SelectedPanel(index: Int, action: MacroAction, screen: ScreenSize, c
         Stepper("Jeda sebelum", action.delayBeforeMs, step = 50, min = 0) {
             callbacks.onChange(index, action.withDelay(it))
         }
-        TextButton(onClick = { callbacks.onDelete(index) }) {
-            Text("Hapus titik", color = MaterialTheme.colorScheme.error)
+        Row {
+            TextButton(onClick = { callbacks.onDelete(index) }) {
+                Text("Hapus titik", color = MaterialTheme.colorScheme.error)
+            }
+            Box(Modifier.weight(1f))
+            TextButton(onClick = callbacks.onDeselect) { Text("Tutup") }
         }
     }
 }

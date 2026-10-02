@@ -50,7 +50,9 @@ Bila SDK tidak terdeteksi otomatis, buat `local.properties` berisi `sdk.dir=/pat
    tombol merah di panel, lakukan tap/swipe seperti biasa (sentuhan diteruskan ke aplikasi
    setelah jari diangkat), lalu tekan tombol kotak untuk selesai dan simpan.
 5. **Auto clicker**: overlay pemilih titik terbuka di atas aplikasi sebelumnya. Geser titik,
-   tambah titik/swipe, atur jeda dan jumlah ulang, uji, lalu simpan.
+   tambah titik/swipe, atur jeda dan jumlah ulang, uji, lalu simpan. Selama mengatur titik,
+   aplikasi di bawahnya tetap bisa disentuh (scroll, pindah layar) kecuali di area penanda
+   dan toolbar.
 6. Putar macro dari daftar di beranda, panel, atau Quick Settings tile **Panel AmbaTap**.
    Tekan volume turun 2× untuk berhenti kapan saja.
 
