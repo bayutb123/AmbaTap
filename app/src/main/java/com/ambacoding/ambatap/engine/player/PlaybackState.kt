@@ -1,0 +1,26 @@
+package com.ambacoding.ambatap.engine.player
+
+data class PlaybackState(
+    val status: Status = Status.IDLE,
+    /** Id macro yang diputar; 0 untuk macro yang belum disimpan. */
+    val macroId: Long? = null,
+    val macroName: String? = null,
+    /** Loop yang sedang berjalan, mulai dari 1. */
+    val loop: Int = 0,
+    /** Jumlah loop; `null` untuk mode tak terbatas atau berbasis durasi. */
+    val totalLoops: Int? = null,
+    /** Indeks aksi yang sedang berjalan, mulai dari 0. */
+    val actionIndex: Int = 0,
+    val actionCount: Int = 0,
+    val countdownMs: Long = 0,
+    /** Orientasi layar (potret/lanskap) berbeda dengan saat macro direkam; posisi bisa meleset. */
+    val orientationMismatch: Boolean = false,
+    /** Alasan pemutaran terakhir gagal dimulai; dibersihkan saat play berikutnya. */
+    val error: PlaybackError? = null,
+) {
+    enum class Status { IDLE, COUNTDOWN, PLAYING, PAUSED }
+
+    val isActive: Boolean get() = status != Status.IDLE
+}
+
+enum class PlaybackError { SERVICE_NOT_CONNECTED, EMPTY_MACRO }
