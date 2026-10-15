@@ -2,6 +2,7 @@ package com.ambacoding.ambatap.service.overlay
 
 import android.annotation.SuppressLint
 import android.content.Context
+import android.graphics.Rect
 import android.graphics.PixelFormat
 import android.os.SystemClock
 import android.view.ContextThemeWrapper
@@ -9,10 +10,13 @@ import android.view.Gravity
 import android.view.MotionEvent
 import android.view.ViewConfiguration
 import android.view.WindowManager
+import android.widget.Toast
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
+import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshots.SnapshotStateList
 import androidx.compose.ui.geometry.Offset
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.ambacoding.ambatap.R
@@ -26,15 +30,22 @@ import com.ambacoding.ambatap.domain.repository.SettingsRepository
 import com.ambacoding.ambatap.engine.player.GestureFactory
 import com.ambacoding.ambatap.engine.player.InputController
 import com.ambacoding.ambatap.engine.player.MacroPlayer
+import com.ambacoding.ambatap.engine.player.ScreenSize
 import com.ambacoding.ambatap.engine.recorder.GestureClassifier
 import com.ambacoding.ambatap.engine.recorder.MacroRecorder
 import com.ambacoding.ambatap.engine.recorder.RecordingState
 import com.ambacoding.ambatap.engine.recorder.TouchSample
+import com.ambacoding.ambatap.engine.recorder.getevent.RawTouchMapper
+import com.ambacoding.ambatap.engine.recorder.getevent.TouchSessionBuilder
 import com.ambacoding.ambatap.service.realScreenSize
 import com.ambacoding.ambatap.service.screenRotation
+import com.ambacoding.ambatap.service.shizuku.PrecisionStream
+import com.ambacoding.ambatap.service.shizuku.ShizukuTouchSource
 import com.ambacoding.ambatap.ui.components.defaultMacroName
 import com.ambacoding.ambatap.ui.theme.AmbaTapTheme
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.combine
@@ -58,7 +69,9 @@ class RecordingController(
     private val repository: MacroRepository,
     settingsRepository: SettingsRepository,
     private val input: InputController,
+    private val precision: ShizukuTouchSource,
     private val bringPanelToFront: () -> Unit,
+    private val panelBounds: () -> Rect?,
 ) {
     private val windowManager = context.getSystemService(WindowManager::class.java)
     private val themedContext = ContextThemeWrapper(context, R.style.Theme_AmbaTap)
@@ -69,12 +82,20 @@ class RecordingController(
     private val settings = settingsRepository.settings
         .stateIn(scope, SharingStarted.Eagerly, AppSettings())
 
-    private val liveTrail = mutableStateListOf<Offset>()
+    /** Jejak tiap jari yang sedang menyentuh, menurut id pointer. */
+    private val liveTrails = mutableStateMapOf<Int, SnapshotStateList<Offset>>()
     private val forwardLock = Mutex()
-    private var samples = mutableListOf<TouchSample>()
-    private var pointerId = NO_POINTER
+
+    /** Sampel tiap jari dalam satu sentuhan, urut saat jari turun. */
+    private var fingers = linkedMapOf<Int, MutableList<TouchSample>>()
+
+    /** Jari yang sudah diangkat; sampelnya tidak ditambah lagi. */
+    private val liftedPointers = mutableSetOf<Int>()
 
     private var layer: OverlayWindow? = null
+
+    /** Perekaman lewat Shizuku sedang berjalan; lapisan hanya menggambar, tidak menangkap sentuhan. */
+    private var precisionJob: Job? = null
     private var sheet: OverlayWindow? = null
 
     // Isian sheet disimpan di sini agar tidak hilang saat sheet disembunyikan untuk uji putar.
@@ -85,14 +106,21 @@ class RecordingController(
         scope.launch {
             recorder.state.map { it.status }.distinctUntilChanged().collect { status ->
                 when (status) {
-                    RecordingState.Status.RECORDING -> showLayer(touchable = true)
+                    RecordingState.Status.RECORDING -> {
+                        startPrecisionIfEnabled()
+                        showLayer(touchable = precisionJob == null)
+                    }
                     RecordingState.Status.PAUSED -> showLayer(touchable = false)
                     RecordingState.Status.REVIEW -> {
+                        stopPrecision()
                         hideLayer()
                         draftName = defaultName()
                         draftRepeat = RepeatMode.Count(1)
                     }
-                    RecordingState.Status.IDLE -> hideLayer()
+                    RecordingState.Status.IDLE -> {
+                        stopPrecision()
+                        hideLayer()
+                    }
                 }
             }
         }
@@ -142,9 +170,13 @@ class RecordingController(
 
     private fun hideLayer() {
         layer?.hide()
-        liveTrail.clear()
-        samples = mutableListOf()
-        pointerId = NO_POINTER
+        resetTouch()
+    }
+
+    private fun resetTouch() {
+        fingers = linkedMapOf()
+        liftedPointers.clear()
+        liveTrails.clear()
     }
 
     @SuppressLint("ClickableViewAccessibility") // Lapisan ini bukan kontrol; sentuhan diteruskan apa adanya.
@@ -152,7 +184,7 @@ class RecordingController(
         return OverlayWindow(themedContext, windowManager, OverlayWindow.fullScreenParams()) {
             AmbaTapTheme(darkTheme = false) {
                 val state by recorder.state.collectAsStateWithLifecycle()
-                RecordLayer(state, liveTrail)
+                RecordLayer(state, liveTrails.values)
             }
         }.also { window ->
             window.view.setOnTouchListener { _, event ->
@@ -162,63 +194,65 @@ class RecordingController(
         }
     }
 
-    /** Mengumpulkan sampel jari pertama; jari tambahan diabaikan (multi-touch belum didukung). */
+    /**
+     * Mengumpulkan sampel semua jari dari turun pertama hingga jari terakhir diangkat;
+     * satu sentuhan dengan beberapa jari menjadi satu aksi multi-touch.
+     */
     private fun onTouch(event: MotionEvent) {
         when (event.actionMasked) {
             MotionEvent.ACTION_DOWN -> {
-                pointerId = event.getPointerId(0)
-                samples = mutableListOf()
-                liveTrail.clear()
+                resetTouch()
                 addSamples(event)
             }
-            MotionEvent.ACTION_MOVE -> addSamples(event)
+            MotionEvent.ACTION_POINTER_DOWN, MotionEvent.ACTION_MOVE -> addSamples(event)
+            MotionEvent.ACTION_POINTER_UP -> {
+                addSamples(event)
+                liftedPointers += event.getPointerId(event.actionIndex)
+            }
             MotionEvent.ACTION_UP -> {
                 addSamples(event)
                 completeTouch()
             }
-            MotionEvent.ACTION_POINTER_UP ->
-                if (event.getPointerId(event.actionIndex) == pointerId) {
-                    addSamples(event)
-                    completeTouch()
-                }
-            MotionEvent.ACTION_CANCEL -> {
-                samples = mutableListOf()
-                pointerId = NO_POINTER
-                liveTrail.clear()
-            }
+            MotionEvent.ACTION_CANCEL -> resetTouch()
         }
     }
 
     private fun addSamples(event: MotionEvent) {
-        if (pointerId == NO_POINTER) return
-        val index = event.findPointerIndex(pointerId)
-        if (index < 0) return
         // rawX/rawY hanya untuk pointer pertama; selisihnya = posisi jendela di layar.
         val offsetX = event.rawX - event.getX(0)
         val offsetY = event.rawY - event.getY(0)
-        for (h in 0 until event.historySize) {
-            val x = event.getHistoricalX(index, h)
-            val y = event.getHistoricalY(index, h)
-            samples += TouchSample(x + offsetX, y + offsetY, event.getHistoricalEventTime(h))
-            liveTrail += Offset(x, y)
+        for (index in 0 until event.pointerCount) {
+            val id = event.getPointerId(index)
+            if (id in liftedPointers) continue
+            val samples = fingers.getOrPut(id) { mutableListOf() }
+            val trail = liveTrails.getOrPut(id) { mutableStateListOf() }
+            // Sampel historis hanya ada untuk MOVE; titik turun jari baru tidak punya riwayat.
+            if (event.actionMasked == MotionEvent.ACTION_MOVE) {
+                for (h in 0 until event.historySize) {
+                    val x = event.getHistoricalX(index, h)
+                    val y = event.getHistoricalY(index, h)
+                    samples += TouchSample(x + offsetX, y + offsetY, event.getHistoricalEventTime(h))
+                    trail += Offset(x, y)
+                }
+            }
+            val x = event.getX(index)
+            val y = event.getY(index)
+            samples += TouchSample(x + offsetX, y + offsetY, event.eventTime)
+            trail += Offset(x, y)
         }
-        val x = event.getX(index)
-        val y = event.getY(index)
-        samples += TouchSample(x + offsetX, y + offsetY, event.eventTime)
-        liveTrail += Offset(x, y)
     }
 
     private fun completeTouch() {
-        val captured = samples.toList()
-        samples = mutableListOf()
-        pointerId = NO_POINTER
+        val captured = fingers.values.map { it.toList() }.filter { it.isNotEmpty() }
+        fingers = linkedMapOf()
+        liftedPointers.clear()
         if (captured.isEmpty()) return
         scope.launch { forward(captured) }
     }
 
-    private suspend fun forward(captured: List<TouchSample>) = forwardLock.withLock {
+    private suspend fun forward(captured: List<List<TouchSample>>) = forwardLock.withLock {
         val screen = context.realScreenSize()
-        val action = GestureClassifier.classify(captured, screen, touchSlopPx, longPressMs, simplifyEpsilonPx)
+        val action = GestureClassifier.classifyMulti(captured, screen, touchSlopPx, longPressMs, simplifyEpsilonPx)
         val gesture = GestureFactory.create(action, screen) ?: return@withLock
 
         layer?.setTouchable(false)
@@ -226,8 +260,80 @@ class RecordingController(
         val startMs = now()
         input.dispatch(gesture)
         recorder.append(action, startMs, endMs = now())
-        liveTrail.clear()
+        liveTrails.clear()
         if (recorder.state.value.status == RecordingState.Status.RECORDING) layer?.setTouchable(true)
+    }
+
+    // endregion
+
+    // region Mode presisi (Shizuku)
+
+    private fun startPrecisionIfEnabled() {
+        if (precisionJob != null || !settings.value.precisionRecording) return
+        precisionJob = scope.launch {
+            val self = coroutineContext[Job]
+            try {
+                recordPrecisely(precision.open())
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                Toast.makeText(context, "Mode presisi gagal (${e.message}); memakai mode biasa", Toast.LENGTH_LONG).show()
+            } finally {
+                // Rekaman baru bisa sudah memulai job lain sebelum job ini selesai dibatalkan.
+                if (precisionJob === self) precisionJob = null
+                liveTrails.clear()
+                // Kembali ke lapisan penangkap bila masih merekam.
+                if (recorder.state.value.status == RecordingState.Status.RECORDING) layer?.setTouchable(true)
+            }
+        }
+    }
+
+    private fun stopPrecision() {
+        precisionJob?.cancel()
+        precisionJob = null
+    }
+
+    /**
+     * Sentuhan sudah sampai ke aplikasi secara langsung, jadi tiap sentuhan yang selesai cukup
+     * diklasifikasi dan dicatat dengan waktu aslinya; tidak ada yang perlu diteruskan.
+     */
+    private suspend fun recordPrecisely(stream: PrecisionStream) {
+        val mapper = RawTouchMapper(stream.device)
+        var screen = context.realScreenSize()
+        var rotation = context.screenRotation()
+        val builder = TouchSessionBuilder { mapper.map(it.rawX, it.rawY, screen, rotation) }
+        // Jam getevent bisa berbeda dengan uptimeMillis; selisihnya diambil dari frame pertama.
+        var clockOffset: Long? = null
+
+        stream.frames.collect { frame ->
+            val offset = clockOffset ?: (now() - frame.timeMs).also { clockOffset = it }
+            if (!builder.isTouching) {
+                screen = context.realScreenSize()
+                rotation = context.screenRotation()
+            }
+            val fingers = builder.onFrame(frame)
+            builder.activeTrails.forEach { (id, samples) ->
+                val trail = liveTrails.getOrPut(id) { mutableStateListOf() }
+                for (i in trail.size until samples.size) trail += Offset(samples[i].x, samples[i].y)
+            }
+            if (fingers != null) {
+                liveTrails.clear()
+                appendPrecise(fingers.map { f -> f.map { it.copy(tMs = it.tMs + offset) } }, screen)
+            }
+        }
+    }
+
+    private fun appendPrecise(fingers: List<List<TouchSample>>, screen: ScreenSize) {
+        if (recorder.state.value.status != RecordingState.Status.RECORDING) return
+        val first = fingers.firstOrNull()?.firstOrNull() ?: return
+        // Sentuhan yang dimulai di panel adalah menekan tombol panel, bukan bagian macro.
+        if (panelBounds()?.contains(first.x.toInt(), first.y.toInt()) == true) return
+        val action = GestureClassifier.classifyMulti(fingers, screen, touchSlopPx, longPressMs, simplifyEpsilonPx)
+        recorder.append(
+            action,
+            startMs = fingers.minOf { it.first().tMs },
+            endMs = fingers.maxOf { it.last().tMs },
+        )
     }
 
     // endregion
@@ -297,7 +403,6 @@ class RecordingController(
     private fun defaultName(): String = defaultMacroName("Rekaman")
 
     private companion object {
-        const val NO_POINTER = -1
         const val SIMPLIFY_EPSILON_DP = 1.5f
         const val PASS_THROUGH_SETTLE_MS = 50L
         const val SHEET_DIM = 0.5f

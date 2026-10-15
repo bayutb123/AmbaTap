@@ -3,9 +3,11 @@ package com.ambacoding.ambatap.engine.player
 import com.ambacoding.ambatap.domain.model.GlobalType
 import com.ambacoding.ambatap.domain.model.Macro
 import com.ambacoding.ambatap.domain.model.MacroAction
+import com.ambacoding.ambatap.domain.model.OnTimeout
 import com.ambacoding.ambatap.domain.model.PlaybackConfig
 import com.ambacoding.ambatap.domain.model.RepeatMode
 import com.ambacoding.ambatap.domain.model.ScreenInfo
+import com.ambacoding.ambatap.domain.model.TextMatch
 import com.ambacoding.ambatap.engine.player.PlaybackState.Status
 import com.ambacoding.ambatap.service.ServiceBridge
 import kotlin.random.Random
@@ -50,6 +52,19 @@ class MacroPlayerTest {
             log += scheduler.currentTime to text
             return true
         }
+
+        /** Teks yang "tampil" di layar beserta pusatnya; diubah test untuk mensimulasikan layar. */
+        val texts = mutableMapOf<String, PxPoint>()
+
+        /** Warna layar yang dikembalikan [pixelColor]. */
+        var screenColor = 0xFF000000.toInt()
+
+        override var canReadScreen = true
+
+        override fun findText(query: String, match: TextMatch): PxPoint? =
+            texts.entries.firstOrNull { TextMatcher.matches(it.key, query, match) }?.value
+
+        override suspend fun pixelColor(x: Int, y: Int): Int = screenColor
 
         val times get() = log.map { it.first }
     }
@@ -260,5 +275,121 @@ class MacroPlayerTest {
         player.play(macro())
 
         assertEquals(PlaybackError.EMPTY_MACRO, player.state.value.error)
+    }
+
+    @Test
+    fun `waits for text to appear and taps its center`() = runTest {
+        val (player, controller) = setUp()
+        backgroundScope.launch {
+            delay(1_000)
+            controller.texts["Lanjutkan"] = PxPoint(300f, 1500f)
+        }
+
+        player.play(
+            macro(
+                MacroAction.WaitForText("lanjut", tapOnFound = true, timeoutMs = 5_000),
+                MacroAction.GlobalAction(GlobalType.BACK),
+            ),
+        )
+        advanceUntilIdle()
+
+        // Diperiksa tiap 250 ms; teks muncul di 1000 ms dan langsung di-tap.
+        assertEquals(listOf(1_000L, 1_050L), controller.times)
+        val tap = controller.log.first().second as GestureSpec
+        assertEquals(PxPoint(300f, 1500f), tap.strokes.single().points.single())
+        assertEquals(PlaybackState(), player.state.value)
+    }
+
+    @Test
+    fun `waits for text to disappear`() = runTest {
+        val (player, controller) = setUp()
+        controller.texts["Memuat"] = PxPoint(0f, 0f)
+        backgroundScope.launch {
+            delay(600)
+            controller.texts.clear()
+        }
+
+        player.play(
+            macro(
+                MacroAction.WaitForText("Memuat", present = false, tapOnFound = true),
+                MacroAction.GlobalAction(GlobalType.HOME),
+            ),
+        )
+        advanceUntilIdle()
+
+        // Tidak ada tap untuk kondisi "hilang".
+        assertEquals(listOf(750L to GlobalType.HOME), controller.log)
+    }
+
+    @Test
+    fun `stops with an error when a condition times out`() = runTest {
+        val (player, controller) = setUp()
+
+        player.play(
+            macro(
+                MacroAction.GlobalAction(GlobalType.HOME),
+                MacroAction.WaitForText("Tidak ada", timeoutMs = 2_000),
+                MacroAction.GlobalAction(GlobalType.BACK),
+                config = PlaybackConfig(repeat = RepeatMode.Infinite),
+            ),
+        )
+        advanceUntilIdle()
+
+        assertEquals(listOf(GlobalType.HOME), controller.log.map { it.second })
+        assertEquals(PlaybackError.CONDITION_TIMEOUT, player.state.value.error)
+        assertEquals(2, player.state.value.errorActionNumber)
+        assertEquals(Status.IDLE, player.state.value.status)
+    }
+
+    @Test
+    fun `continues after a timeout when configured to`() = runTest {
+        val (player, controller) = setUp()
+
+        player.play(
+            macro(
+                MacroAction.WaitForText("Tidak ada", timeoutMs = 1_000, onTimeout = OnTimeout.CONTINUE),
+                MacroAction.GlobalAction(GlobalType.BACK),
+                config = PlaybackConfig(speed = 4f),
+            ),
+        )
+        advanceUntilIdle()
+
+        // Batas waktu tidak ikut dipercepat.
+        assertEquals(listOf(1_000L to GlobalType.BACK), controller.log)
+        assertEquals(PlaybackState(), player.state.value)
+    }
+
+    @Test
+    fun `waits for a pixel color within tolerance`() = runTest {
+        val (player, controller) = setUp()
+        controller.screenColor = 0xFF000000.toInt()
+        backgroundScope.launch {
+            delay(1_200)
+            controller.screenColor = 0xFF20C060.toInt()
+        }
+
+        player.play(
+            macro(
+                MacroAction.WaitForColor(0.1f, 0.2f, color = 0xFF22C55E.toInt(), tolerance = 8, tapOnFound = true),
+            ),
+        )
+        advanceUntilIdle()
+
+        // Diperiksa tiap 500 ms: 0, 500, 1000, 1500 (cocok) lalu tap di titik itu.
+        assertEquals(listOf(1_500L), controller.times)
+        val tap = controller.log.single().second as GestureSpec
+        assertEquals(PxPoint(100f, 400f), tap.strokes.single().points.single())
+    }
+
+    @Test
+    fun `color conditions stop when screen capture is unsupported`() = runTest {
+        val (player, controller) = setUp()
+        controller.canReadScreen = false
+
+        player.play(macro(MacroAction.WaitForColor(0.5f, 0.5f, color = -1), MacroAction.GlobalAction(GlobalType.BACK)))
+        advanceUntilIdle()
+
+        assertEquals(emptyList<Any>(), controller.log)
+        assertEquals(PlaybackError.SCREEN_CAPTURE_UNSUPPORTED, player.state.value.error)
     }
 }

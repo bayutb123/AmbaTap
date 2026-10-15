@@ -13,6 +13,9 @@ val MacroAction.durationMs: Long
         is MacroAction.GlobalAction,
         is MacroAction.LaunchApp,
         is MacroAction.InputText,
+        // Lama menunggu kondisi tidak bisa diperkirakan.
+        is MacroAction.WaitForText,
+        is MacroAction.WaitForColor,
         -> 0
     }
 

@@ -22,9 +22,20 @@ AmbaTap memakai API Layanan Aksesibilitas Android (`AccessibilityService`) hanya
    Tombol hanya ditahan selama macro berjalan.
 4. **Mengisi teks** ke kolom yang sedang fokus, hanya bila Anda menambahkan aksi "Ketik teks"
    ke macro.
+5. **Memeriksa isi layar untuk aksi bersyarat**, hanya bila Anda menambahkan aksi tersebut:
+   - "Tunggu teks" mencari teks/deskripsi elemen di layar yang cocok dengan kata kunci Anda.
+   - "Tunggu warna" mengambil tangkapan layar (Android 11+) dan membaca warna **satu piksel**
+     di titik yang Anda pilih.
 
-Saat merekam, AmbaTap mencatat **koordinat dan waktu sentuhan Anda** pada layar. AmbaTap tidak
-membaca isi layar, teks, kata sandi, atau notifikasi aplikasi lain.
+   Pemeriksaan berlangsung di memori saat macro berjalan. Isi layar dan tangkapan layar
+   tidak disimpan, tidak dicatat, dan tidak dikirim ke mana pun; yang tersimpan hanyalah
+   kata kunci dan warna yang Anda atur di macro.
+
+Saat merekam, AmbaTap mencatat **koordinat dan waktu sentuhan Anda** pada layar. Bila Anda
+mengaktifkan **mode presisi** dan memberi izin Shizuku, AmbaTap membaca event layar sentuh
+mentah (`getevent`) **hanya selama perekaman berlangsung**, untuk tujuan yang sama; prosesnya
+berhenti begitu perekaman selesai. Di luar aksi
+bersyarat di atas, AmbaTap tidak membaca isi layar, teks, kata sandi, atau notifikasi aplikasi lain.
 
 ## Data yang disimpan
 
@@ -43,7 +54,14 @@ keputusan Anda. Impor hanya membaca file yang Anda pilih.
 ## Notifikasi
 
 Izin notifikasi dipakai untuk menampilkan status macro yang sedang berjalan beserta tombol
-Jeda dan Berhenti.
+Jeda dan Berhenti, dan untuk memberi tahu bila macro terjadwal batal dijalankan.
+
+## Jadwal dan pemicu
+
+- Izin **alarm tepat** dan **berjalan saat perangkat menyala** hanya dipakai untuk memutar
+  macro pada jadwal yang Anda atur dan memasang ulang jadwal itu setelah perangkat dinyalakan.
+- Pemicu "saat aplikasi dibuka" memakai nama paket aplikasi yang sedang tampil di depan,
+  hanya untuk mencocokkannya dengan aplikasi yang Anda pilih. Riwayat aplikasi tidak dicatat.
 
 ## Kontak
 

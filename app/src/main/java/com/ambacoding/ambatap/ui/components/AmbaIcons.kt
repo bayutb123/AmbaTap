@@ -119,6 +119,15 @@ object AmbaIcons {
         }
     }
 
+    /** Pipet: ambil warna dari layar. */
+    val Eyedropper: ImageVector by lazy {
+        strokeIcon("Eyedropper") {
+            moveTo(14f, 6f); lineTo(18f, 10f)
+            moveTo(16f, 8f); lineTo(6f, 18f); lineTo(4f, 20f)
+            moveTo(15f, 5f); lineTo(17f, 3f); lineTo(21f, 7f); lineTo(19f, 9f)
+        }
+    }
+
     val Stop: ImageVector by lazy {
         fillIcon("Stop") {
             rect(6f, 6f, 12f, 12f)

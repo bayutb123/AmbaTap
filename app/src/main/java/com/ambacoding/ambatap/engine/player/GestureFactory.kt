@@ -51,6 +51,8 @@ object GestureFactory {
             is MacroAction.GlobalAction,
             is MacroAction.LaunchApp,
             is MacroAction.InputText,
+            is MacroAction.WaitForText,
+            is MacroAction.WaitForColor,
             -> null
         }
     }

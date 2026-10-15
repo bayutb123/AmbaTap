@@ -1,6 +1,12 @@
 package com.ambacoding.ambatap.domain
 
 import com.ambacoding.ambatap.domain.model.MacroAction
+import com.ambacoding.ambatap.domain.model.Stroke
+import com.ambacoding.ambatap.domain.model.center
+import com.ambacoding.ambatap.domain.model.durationMs
+import com.ambacoding.ambatap.domain.model.pinchGesture
+import com.ambacoding.ambatap.domain.model.reversed
+import com.ambacoding.ambatap.domain.model.withCenter
 import com.ambacoding.ambatap.domain.model.TimedPoint
 import com.ambacoding.ambatap.domain.model.move
 import com.ambacoding.ambatap.domain.model.withDelay
@@ -47,4 +53,64 @@ class MacroEditsTest {
         assertEquals(listOf("c", "a", "b"), listOf("a", "b", "c").move(2, 0))
         assertEquals(listOf("a", "b"), listOf("a", "b").move(0, 5))
     }
+
+    private val pinch = pinchGesture(0.5f, 0.5f, startSpan = 0.2f, endSpan = 0.6f, durationMs = 400)
+
+    @Test
+    fun `pinch fingers move apart around the center`() {
+        val (left, right) = pinch.strokes
+        assertEquals(listOf(0.4f, 0.2f), left.points.map { it.x }, 1e-5f)
+        assertEquals(listOf(0.6f, 0.8f), right.points.map { it.x }, 1e-5f)
+        assertEquals(listOf(0L, 400L), left.points.map { it.tMs })
+        assertEquals(0.5f to 0.5f, pinch.center)
+        assertEquals(400L, (pinch as MacroAction).durationMs)
+    }
+
+    @Test
+    fun `moving a multi touch keeps its shape inside the screen`() {
+        val moved = pinch.withCenter(0.3f, 0.2f)
+        val left = moved.strokes[0].points
+        assertEquals(0.2f, left[0].x, 1e-5f)
+        assertEquals(0f, left[1].x, 1e-5f) // 0.0 setelah clamp
+        assertEquals(0.2f, left[0].y, 1e-5f)
+    }
+
+    @Test
+    fun `scaling a multi touch scales start delays and timings`() {
+        val gesture = MacroAction.MultiTouch(
+            listOf(
+                Stroke(listOf(TimedPoint(0.1f, 0.1f, 0), TimedPoint(0.2f, 0.2f, 200))),
+                Stroke(listOf(TimedPoint(0.5f, 0.5f, 0), TimedPoint(0.6f, 0.6f, 100)), startDelayMs = 100),
+            ),
+        )
+        val slower = gesture.withDuration(400)
+        assertEquals(400L, (slower as MacroAction).durationMs)
+        assertEquals(200L, slower.strokes[1].startDelayMs)
+        assertEquals(400L, slower.strokes[0].points.last().tMs)
+    }
+
+    @Test
+    fun `reversing turns zoom in into zoom out`() {
+        val reversed = pinch.reversed()
+        assertEquals(listOf(0.2f, 0.4f), reversed.strokes[0].points.map { it.x }, 1e-5f)
+        assertEquals(listOf(0L, 400L), reversed.strokes[0].points.map { it.tMs })
+        assertEquals(pinch, reversed.reversed())
+    }
+
+    @Test
+    fun `reversing mirrors staggered finger timing`() {
+        val gesture = MacroAction.MultiTouch(
+            listOf(
+                Stroke(listOf(TimedPoint(0f, 0f, 0), TimedPoint(0f, 0f, 300))),
+                Stroke(listOf(TimedPoint(1f, 1f, 0), TimedPoint(1f, 1f, 100)), startDelayMs = 50),
+            ),
+        )
+        // Jari kedua berakhir di 150 dari total 300, jadi saat dibalik mulai di 150.
+        assertEquals(150L, gesture.reversed().strokes[1].startDelayMs)
+    }
+}
+
+private fun assertEquals(expected: List<Float>, actual: List<Float>, delta: Float) {
+    assertEquals(expected.size, actual.size)
+    expected.zip(actual).forEach { (e, a) -> assertEquals(e, a, delta) }
 }

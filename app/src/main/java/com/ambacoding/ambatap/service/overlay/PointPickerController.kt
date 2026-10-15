@@ -20,18 +20,23 @@ import com.ambacoding.ambatap.domain.model.MacroAction
 import com.ambacoding.ambatap.domain.model.PlaybackConfig
 import com.ambacoding.ambatap.domain.model.RepeatMode
 import com.ambacoding.ambatap.domain.model.TimedPoint
+import com.ambacoding.ambatap.domain.model.center
+import com.ambacoding.ambatap.domain.model.withCenter
 import com.ambacoding.ambatap.domain.model.withEndpoints
 import com.ambacoding.ambatap.domain.repository.MacroRepository
 import com.ambacoding.ambatap.domain.repository.SettingsRepository
+import com.ambacoding.ambatap.engine.player.InputController
 import com.ambacoding.ambatap.engine.player.MacroPlayer
 import com.ambacoding.ambatap.engine.player.ScreenSize
 import com.ambacoding.ambatap.service.realScreenSize
 import com.ambacoding.ambatap.ui.theme.AmbaTapTheme
+import com.ambacoding.ambatap.ui.theme.ConditionTeal
 import com.ambacoding.ambatap.ui.theme.PlayBlue
 import com.ambacoding.ambatap.ui.theme.RecordOrange
 import kotlin.math.hypot
 import kotlin.math.roundToInt
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
@@ -55,6 +60,7 @@ class PointPickerController(
     private val player: MacroPlayer,
     private val repository: MacroRepository,
     settingsRepository: SettingsRepository,
+    private val input: InputController,
 ) {
     private val windowManager = context.getSystemService(WindowManager::class.java)
     private val themedContext = ContextThemeWrapper(context, R.style.Theme_AmbaTap)
@@ -150,7 +156,9 @@ class PointPickerController(
     private fun handles(): List<Handle> = buildList {
         actions.forEachIndexed { i, action ->
             when (action) {
-                is MacroAction.Tap, is MacroAction.LongPress -> add(Handle(i, End.SINGLE))
+                is MacroAction.Tap, is MacroAction.LongPress, is MacroAction.WaitForColor -> add(Handle(i, End.SINGLE))
+                // Multi-touch dipindah utuh lewat satu pegangan di titik tengahnya.
+                is MacroAction.MultiTouch -> if (action.center != null) add(Handle(i, End.SINGLE))
                 is MacroAction.Swipe -> if (action.points.isNotEmpty()) {
                     add(Handle(i, End.START))
                     add(Handle(i, End.END))
@@ -163,6 +171,8 @@ class PointPickerController(
     private fun position(handle: Handle): Pair<Float, Float>? = when (val action = actions.getOrNull(handle.index)) {
         is MacroAction.Tap -> action.x to action.y
         is MacroAction.LongPress -> action.x to action.y
+        is MacroAction.WaitForColor -> action.x to action.y
+        is MacroAction.MultiTouch -> action.center
         is MacroAction.Swipe -> when (handle.end) {
             End.END -> action.points.lastOrNull()?.let { it.x to it.y }
             else -> action.points.firstOrNull()?.let { it.x to it.y }
@@ -193,6 +203,8 @@ class PointPickerController(
         val updated = when (val action = actions.getOrNull(handle.index)) {
             is MacroAction.Tap -> action.copy(x = x, y = y)
             is MacroAction.LongPress -> action.copy(x = x, y = y)
+            is MacroAction.WaitForColor -> action.copy(x = x, y = y)
+            is MacroAction.MultiTouch -> action.withCenter(x, y)
             is MacroAction.Swipe -> {
                 val start = action.points.first()
                 val end = action.points.last()
@@ -236,7 +248,11 @@ class PointPickerController(
             val size = if (newHandle.end == End.END) SmallMarkerSize else MarkerSize
             ui.value = MarkerUi(
                 label = if (newHandle.end == End.END) "›" else "${newHandle.index + 1}",
-                color = if (action is MacroAction.LongPress) RecordOrange else PlayBlue,
+                color = when (action) {
+                    is MacroAction.LongPress -> RecordOrange
+                    is MacroAction.WaitForColor -> ConditionTeal
+                    else -> PlayBlue
+                },
                 selected = selected == newHandle.index,
                 size = size,
             )
@@ -358,6 +374,7 @@ class PointPickerController(
                 selected = selected,
                 repeat = config.repeat,
                 screen = screen,
+                canReadScreen = input.canReadScreen,
                 onDragBy = ::moveBottomBar,
                 callbacks = PickerActions(
                     onDeselect = { select(null) },
@@ -381,6 +398,11 @@ class PointPickerController(
                         )
                         select(actions.lastIndex)
                     },
+                    onAddColor = {
+                        actions += MacroAction.WaitForColor(0.5f, 0.5f, delayBeforeMs = DEFAULT_INTERVAL_MS)
+                        select(actions.lastIndex)
+                    },
+                    onCaptureColor = ::captureColor,
                     onCycleRepeat = {
                         val index = RepeatCycle.indexOf(config.repeat)
                         config = config.copy(repeat = RepeatCycle[(index + 1) % RepeatCycle.size])
@@ -423,6 +445,25 @@ class PointPickerController(
 
     // endregion
 
+    /**
+     * Mengambil warna aplikasi di bawah penanda aksi tunggu warna. Semua jendela pemilih
+     * disembunyikan sebentar agar tidak ikut tertangkap layar.
+     */
+    private fun captureColor(index: Int) {
+        val action = actions.getOrNull(index) as? MacroAction.WaitForColor ?: return
+        scope.launch {
+            hideAll()
+            delay(CAPTURE_SETTLE_MS)
+            val x = (action.x * screen.widthPx).roundToInt()
+            val y = (action.y * screen.heightPx).roundToInt()
+            val color = input.pixelColor(x, y)
+            if (requests.session.value == null || player.state.value.isActive) return@launch
+            showAll()
+            val current = actions.getOrNull(index) as? MacroAction.WaitForColor ?: return@launch
+            if (color != null) actions[index] = current.copy(color = color)
+        }
+    }
+
     private fun testPlay() {
         val macro = current() ?: return
         player.play(macro, startDelayMs = settings.value.countdownSeconds * 1_000L)
@@ -443,6 +484,9 @@ class PointPickerController(
         const val DEFAULT_INTERVAL_MS = 100L
         const val BAR_MARGIN_DP = 12
         const val BAR_MAX_WIDTH_DP = 400
+
+        /** Waktu agar jendela yang disembunyikan benar-benar hilang dari layar sebelum ditangkap. */
+        const val CAPTURE_SETTLE_MS = 250L
 
         /** Urutan pilihan tombol "Ulang" di toolbar. */
         val RepeatCycle = listOf(RepeatMode.Count(1), RepeatMode.Count(10), RepeatMode.Count(100), RepeatMode.Infinite)

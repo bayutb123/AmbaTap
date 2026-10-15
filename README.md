@@ -6,13 +6,22 @@ Rekam tap, long press, dan swipe di aplikasi mana pun lalu putar ulang otomatis,
 ## Fitur
 
 - **Rekam macro** di atas aplikasi lain; setiap sentuhan diteruskan ke aplikasi saat direkam.
+  Gesture beberapa jari (cubit/zoom, putar) ikut terekam sebagai satu aksi multi-touch.
 - **Auto clicker manual**: taruh dan geser titik tap/tahan/swipe langsung di layar.
 - **Putar ulang** 1×, N×, tak terbatas, atau selama durasi tertentu; kecepatan 0,5×–4×;
   jeda antar loop; acak posisi dan jeda.
 - **Panel melayang** yang bisa digeser, **notifikasi** dengan tombol Jeda/Berhenti, dan
   **berhenti darurat** dengan menekan volume turun 2×.
 - **Editor**: ubah koordinat, durasi, dan jeda; urutkan; sisipkan Tunggu, Kembali, Beranda,
-  Buka aplikasi, atau Ketik teks.
+  Buka aplikasi, Ketik teks, atau Cubit (zoom); geser dan balik arah gesture multi-touch.
+- **Aksi bersyarat**: tunggu sampai teks/elemen muncul atau hilang (opsional langsung di-tap),
+  atau tunggu warna piksel tertentu (Android 11+; warna diambil langsung dari layar di
+  pemilih titik). Bila batas waktu habis, macro berhenti atau lanjut sesuai pilihan.
+- **Mode presisi (opsional, eksperimental)**: dengan [Shizuku](https://shizuku.rikka.app/)
+  aktif, perekaman membaca sentuhan langsung dari layar sentuh (`getevent`) sehingga aplikasi
+  menerima sentuhan seketika, tanpa lapisan penangkap. Aktifkan di Pengaturan › Perekaman.
+- **Jalankan otomatis**: jadwalkan macro pada jam tertentu (sekali atau di hari-hari
+  terpilih), atau putar otomatis setiap aplikasi tertentu dibuka. Atur di editor macro.
 - **Impor/ekspor** macro sebagai file JSON, **Quick Settings tile**, indikator sentuhan,
   peringatan bila orientasi layar berbeda dari saat direkam.
 - Semua data tersimpan di perangkat; aplikasi tidak memiliki izin internet.
@@ -58,10 +67,23 @@ Bila SDK tidak terdeteksi otomatis, buat `local.properties` berisi `sdk.dir=/pat
 
 ### Batasan yang diketahui
 
+- Jadwal hanya berjalan bila layar menyala dan tidak terkunci (gesture tidak bisa dikirim ke
+  layar kunci); bila tidak, macro dilewati dan muncul notifikasi. Di Android 12+ beri izin
+  **Alarm & pengingat** agar tepat waktu. Beberapa ROM (Xiaomi, dll.) perlu izin autostart.
+
+- Aksi "Tunggu warna" membaca tangkapan layar, jadi panel AmbaTap atau indikator sentuhan
+  yang kebetulan menutupi titik tersebut ikut terbaca. Letakkan panel di tempat lain.
+- "Tunggu teks" hanya menemukan teks yang dibuka ke layanan aksesibilitas; teks di dalam
+  game/kanvas biasanya tidak terbaca, gunakan "Tunggu warna" untuk itu.
+
 - Saat merekam, swipe/scroll baru terjadi di aplikasi setelah jari diangkat, dan sentuhan
   yang terjadi selagi gesture sebelumnya masih diteruskan tidak ikut terekam.
-- Perekaman hanya mendukung satu jari; gesture sistem (swipe tepi untuk Kembali/Beranda)
-  tidak bisa direkam.
+- Gesture sistem (swipe tepi untuk Kembali/Beranda) tidak bisa direkam. Gesture beberapa
+  jari, seperti swipe, baru diteruskan ke aplikasi setelah semua jari diangkat (kecuali di
+  mode presisi).
+- Mode presisi hanya mendukung layar sentuh dengan protokol multi-touch B (hampir semua
+  perangkat modern) dan belum diuji di banyak perangkat; pada layar yang dipasang dengan
+  orientasi tak biasa, posisi bisa tertukar. Matikan mode ini bila hasil rekaman meleset.
 - Aplikasi yang memblokir gesture terinjeksi atau memakai `FLAG_SECURE` bisa tidak merespons.
 - Gesture yang lebih panjang dari batas sistem (±60 detik) dipotong.
 

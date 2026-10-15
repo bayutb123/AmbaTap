@@ -415,7 +415,8 @@ private fun MacroCard(
                 )
                 Text(
                     if (running) runningLabel(playback) else
-                        "${macro.actionCount} aksi · ${formatClock(macro.durationMs)} · ${macro.repeatLabel}",
+                        "${macro.actionCount} aksi · ${formatClock(macro.durationMs)} · ${macro.repeatLabel}" +
+                            (macro.triggerLabel?.let { " · ⏱ $it" } ?: ""),
                     style = MonoStyle,
                     color = if (running) colors.primary else colors.onSurfaceVariant,
                 )

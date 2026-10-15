@@ -22,6 +22,7 @@ class SettingsDataStore @Inject constructor(
             countdownSeconds = prefs[COUNTDOWN_SECONDS] ?: defaults.countdownSeconds,
             showTouchIndicator = prefs[SHOW_TOUCH_INDICATOR] ?: defaults.showTouchIndicator,
             panelIdleOpacity = prefs[PANEL_IDLE_OPACITY] ?: defaults.panelIdleOpacity,
+            precisionRecording = prefs[PRECISION_RECORDING] ?: defaults.precisionRecording,
         )
     }
 
@@ -37,9 +38,14 @@ class SettingsDataStore @Inject constructor(
         dataStore.edit { it[PANEL_IDLE_OPACITY] = opacity.coerceIn(0.2f, 1f) }
     }
 
+    override suspend fun setPrecisionRecording(enabled: Boolean) {
+        dataStore.edit { it[PRECISION_RECORDING] = enabled }
+    }
+
     private companion object {
         val COUNTDOWN_SECONDS = intPreferencesKey("countdown_seconds")
         val SHOW_TOUCH_INDICATOR = booleanPreferencesKey("show_touch_indicator")
         val PANEL_IDLE_OPACITY = floatPreferencesKey("panel_idle_opacity")
+        val PRECISION_RECORDING = booleanPreferencesKey("precision_recording")
     }
 }

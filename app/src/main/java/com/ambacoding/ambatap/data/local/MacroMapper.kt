@@ -2,6 +2,7 @@ package com.ambacoding.ambatap.data.local
 
 import com.ambacoding.ambatap.domain.model.Macro
 import com.ambacoding.ambatap.domain.model.MacroAction
+import com.ambacoding.ambatap.domain.model.MacroTriggers
 import com.ambacoding.ambatap.domain.model.PlaybackConfig
 import com.ambacoding.ambatap.domain.model.ScreenInfo
 import kotlinx.serialization.json.Json
@@ -21,6 +22,7 @@ fun MacroEntity.toDomain(): Macro = Macro(
     actions = MacroJson.decodeFromString<List<MacroAction>>(actionsJson),
     screen = MacroJson.decodeFromString<ScreenInfo>(screenJson),
     config = MacroJson.decodeFromString<PlaybackConfig>(configJson),
+    triggers = MacroJson.decodeFromString<MacroTriggers>(triggersJson),
     createdAt = createdAt,
     updatedAt = updatedAt,
 )
@@ -31,6 +33,7 @@ fun Macro.toEntity(): MacroEntity = MacroEntity(
     actionsJson = MacroJson.encodeToString(actions),
     screenJson = MacroJson.encodeToString(screen),
     configJson = MacroJson.encodeToString(config),
+    triggersJson = MacroJson.encodeToString(triggers),
     schemaVersion = MACRO_SCHEMA_VERSION,
     createdAt = createdAt,
     updatedAt = updatedAt,

@@ -36,6 +36,7 @@ import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.ambacoding.ambatap.domain.model.MacroAction
+import com.ambacoding.ambatap.domain.model.durationMs
 import com.ambacoding.ambatap.engine.recorder.RecordingState
 import com.ambacoding.ambatap.ui.components.formatClock
 import com.ambacoding.ambatap.ui.theme.Ink
@@ -54,7 +55,7 @@ private const val TOAST_MS = 2_500L
  * Hanya menggambar; sentuhan ditangkap oleh [RecordingController].
  */
 @Composable
-fun RecordLayer(state: RecordingState, liveTrail: List<Offset>) {
+fun RecordLayer(state: RecordingState, liveTrails: Collection<List<Offset>>) {
     val paused = state.status == RecordingState.Status.PAUSED
     val accent = if (paused) MutedDark else RecordOrange
 
@@ -79,13 +80,14 @@ fun RecordLayer(state: RecordingState, liveTrail: List<Offset>) {
             state.actions.takeLast(VISIBLE_MARKERS).forEachIndexed { i, action ->
                 drawMarker(action, number = maxOf(firstNumber, 1) + i, textMeasurer)
             }
-            if (liveTrail.isNotEmpty()) {
+            liveTrails.forEach { trail ->
+                if (trail.isEmpty()) return@forEach
                 val path = Path().apply {
-                    moveTo(liveTrail.first().x, liveTrail.first().y)
-                    liveTrail.drop(1).forEach { lineTo(it.x, it.y) }
+                    moveTo(trail.first().x, trail.first().y)
+                    trail.drop(1).forEach { lineTo(it.x, it.y) }
                 }
                 drawPath(path, RecordOrange, style = Stroke(4.dp.toPx()))
-                drawCircle(RecordOrange, 22.dp.toPx(), liveTrail.last(), alpha = 0.25f)
+                drawCircle(RecordOrange, 22.dp.toPx(), trail.last(), alpha = 0.25f)
             }
         }
 
@@ -145,21 +147,33 @@ private fun LastActionToast(actions: List<MacroAction>, modifier: Modifier) {
 private fun DrawScope.drawMarker(action: MacroAction, number: Int, textMeasurer: TextMeasurer) {
     val color = RecordOrange
     fun px(x: Float, y: Float) = Offset(x * size.width, y * size.height)
+    fun dashedPath(points: List<Offset>) {
+        val path = Path().apply {
+            moveTo(points.first().x, points.first().y)
+            points.drop(1).forEach { lineTo(it.x, it.y) }
+        }
+        drawPath(
+            path,
+            color,
+            style = Stroke(3.dp.toPx(), pathEffect = PathEffect.dashPathEffect(floatArrayOf(4f, 14f))),
+        )
+    }
     val center = when (action) {
         is MacroAction.Tap -> px(action.x, action.y)
         is MacroAction.LongPress -> px(action.x, action.y)
         is MacroAction.Swipe -> {
             val points = action.points.map { px(it.x, it.y) }
-            val path = Path().apply {
-                moveTo(points.first().x, points.first().y)
-                points.drop(1).forEach { lineTo(it.x, it.y) }
-            }
-            drawPath(
-                path,
-                color,
-                style = Stroke(3.dp.toPx(), pathEffect = PathEffect.dashPathEffect(floatArrayOf(4f, 14f))),
-            )
+            dashedPath(points)
             points.last()
+        }
+        is MacroAction.MultiTouch -> {
+            val ends = action.strokes.filter { it.points.isNotEmpty() }.map { stroke ->
+                val points = stroke.points.map { px(it.x, it.y) }
+                dashedPath(points)
+                points.last()
+            }
+            if (ends.isEmpty()) return
+            Offset(ends.map { it.x }.average().toFloat(), ends.map { it.y }.average().toFloat())
         }
         else -> return
     }
@@ -179,6 +193,7 @@ private fun MacroAction.label(): String = when (this) {
     is MacroAction.Tap -> "Tap"
     is MacroAction.LongPress -> "Long press"
     is MacroAction.Swipe -> "Swipe"
+    is MacroAction.MultiTouch -> "Multi-touch"
     else -> "Aksi"
 }
 
@@ -186,5 +201,6 @@ private fun MacroAction.detail(): String = when (this) {
     is MacroAction.Tap -> "$durationMs ms"
     is MacroAction.LongPress -> "$durationMs ms"
     is MacroAction.Swipe -> "${points.size} titik · $durationMs ms"
+    is MacroAction.MultiTouch -> "${strokes.size} jari · $durationMs ms"
     else -> ""
 }

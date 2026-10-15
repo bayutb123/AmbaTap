@@ -8,4 +8,5 @@ interface SettingsRepository {
     suspend fun setCountdownSeconds(seconds: Int)
     suspend fun setShowTouchIndicator(show: Boolean)
     suspend fun setPanelIdleOpacity(opacity: Float)
+    suspend fun setPrecisionRecording(enabled: Boolean)
 }

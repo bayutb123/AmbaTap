@@ -1,5 +1,6 @@
 package com.ambacoding.ambatap.data.local
 
+import androidx.room.ColumnInfo
 import androidx.room.Entity
 import androidx.room.PrimaryKey
 
@@ -14,6 +15,7 @@ data class MacroEntity(
     val actionsJson: String,
     val screenJson: String,
     val configJson: String,
+    @ColumnInfo(defaultValue = "{}") val triggersJson: String = "{}",
     val schemaVersion: Int,
     val createdAt: Long,
     val updatedAt: Long,

@@ -1,6 +1,7 @@
 package com.ambacoding.ambatap.engine.recorder
 
 import com.ambacoding.ambatap.domain.model.MacroAction
+import com.ambacoding.ambatap.domain.model.Stroke
 import com.ambacoding.ambatap.domain.model.TimedPoint
 import com.ambacoding.ambatap.engine.player.ScreenSize
 import org.junit.Assert.assertEquals
@@ -61,5 +62,38 @@ class GestureClassifierTest {
         val action = classify(TouchSample(100f, 100f, 42))
 
         assertEquals(1L, (action as MacroAction.Tap).durationMs)
+    }
+
+    private fun classifyMulti(vararg fingers: List<TouchSample>) = GestureClassifier.classifyMulti(
+        fingers.toList(),
+        screen,
+        touchSlopPx = 20f,
+        longPressMs = 500,
+        simplifyEpsilonPx = 2f,
+    )
+
+    @Test
+    fun `a single finger is classified as usual`() {
+        val action = classifyMulti(listOf(TouchSample(250f, 500f, 0), TouchSample(250f, 500f, 50)), emptyList())
+
+        assertEquals(MacroAction.Tap(0.25f, 0.25f, durationMs = 50), action)
+    }
+
+    @Test
+    fun `two fingers become a multi touch with relative timing`() {
+        val action = classifyMulti(
+            listOf(TouchSample(400f, 1_000f, 1_000), TouchSample(300f, 1_000f, 1_300)),
+            listOf(TouchSample(600f, 1_000f, 1_050), TouchSample(700f, 1_000f, 1_300)),
+        )
+
+        assertEquals(
+            MacroAction.MultiTouch(
+                listOf(
+                    Stroke(listOf(TimedPoint(0.4f, 0.5f, 0), TimedPoint(0.3f, 0.5f, 300))),
+                    Stroke(listOf(TimedPoint(0.6f, 0.5f, 0), TimedPoint(0.7f, 0.5f, 250)), startDelayMs = 50),
+                ),
+            ),
+            action,
+        )
     }
 }

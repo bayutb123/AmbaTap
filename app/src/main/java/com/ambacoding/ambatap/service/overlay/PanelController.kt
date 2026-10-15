@@ -1,6 +1,7 @@
 package com.ambacoding.ambatap.service.overlay
 
 import android.content.Context
+import android.graphics.Rect
 import android.content.Intent
 import android.graphics.PixelFormat
 import android.view.ContextThemeWrapper
@@ -88,6 +89,9 @@ class PanelController(
     private fun show() {
         window.show()
     }
+
+    /** Posisi panel di layar, atau `null` bila tidak tampil. */
+    fun bounds(): Rect? = if (created) window.boundsOnScreen() else null
 
     /** Pasang ulang jendela panel agar berada di atas overlay yang baru ditambahkan. */
     fun bringToFront() {
