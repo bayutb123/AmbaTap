@@ -49,6 +49,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.ambacoding.ambatap.domain.model.MacroAction
 import com.ambacoding.ambatap.domain.model.RepeatMode
+import com.ambacoding.ambatap.domain.model.center
 import com.ambacoding.ambatap.domain.model.withDelay
 import com.ambacoding.ambatap.domain.model.withDuration
 import com.ambacoding.ambatap.engine.player.ColorMatcher
@@ -95,7 +96,7 @@ val SmallMarkerSize = 36.dp
 
 val MacroAction.isPositional: Boolean
     get() = this is MacroAction.Tap || this is MacroAction.LongPress || this is MacroAction.Swipe ||
-        this is MacroAction.WaitForColor
+        this is MacroAction.WaitForColor || this is MacroAction.MultiTouch
 
 /** Lapisan layar penuh yang hanya menggambar jalur swipe; jendelanya tidak bisa disentuh. */
 @Composable
@@ -108,14 +109,23 @@ fun PickerPaths(actions: List<MacroAction>, screen: ScreenSize) {
     ) {
         val layout = coords ?: return@Canvas
         fun local(nx: Float, ny: Float) = layout.screenToLocal(Offset(nx * screen.widthPx, ny * screen.heightPx))
-        actions.filterIsInstance<MacroAction.Swipe>().forEach { swipe ->
-            if (swipe.points.size < 2) return@forEach
+        val paths = actions.flatMap { action ->
+            when (action) {
+                is MacroAction.Swipe -> listOf(action.points)
+                is MacroAction.MultiTouch -> action.strokes.map { it.points }
+                else -> emptyList()
+            }
+        }
+        paths.forEach { points ->
+            if (points.size < 2) return@forEach
             val path = Path().apply {
-                val p0 = local(swipe.points.first().x, swipe.points.first().y)
+                val p0 = local(points.first().x, points.first().y)
                 moveTo(p0.x, p0.y)
-                swipe.points.drop(1).forEach { p -> local(p.x, p.y).let { lineTo(it.x, it.y) } }
+                points.drop(1).forEach { p -> local(p.x, p.y).let { lineTo(it.x, it.y) } }
             }
             drawPath(path, PlayBlue, style = Stroke(4.dp.toPx()))
+            // Ujung jalur ditandai titik agar arah gerakan terlihat.
+            drawCircle(PlayBlue, 5.dp.toPx(), local(points.last().x, points.last().y))
         }
     }
 }
@@ -254,6 +264,7 @@ private fun SelectedPanel(index: Int, action: MacroAction, screen: ScreenSize, c
                 when (action) {
                     is MacroAction.Swipe -> "Swipe ${index + 1}"
                     is MacroAction.WaitForColor -> "Cek warna ${index + 1}"
+                    is MacroAction.MultiTouch -> "Multi-touch ${index + 1}"
                     else -> "Titik ${index + 1}"
                 },
                 style = MaterialTheme.typography.titleMedium,
@@ -263,6 +274,7 @@ private fun SelectedPanel(index: Int, action: MacroAction, screen: ScreenSize, c
                 is MacroAction.Tap -> action.x to action.y
                 is MacroAction.LongPress -> action.x to action.y
                 is MacroAction.WaitForColor -> action.x to action.y
+                is MacroAction.MultiTouch -> action.center ?: (0f to 0f)
                 is MacroAction.Swipe -> action.points.first().x to action.points.first().y
                 else -> 0f to 0f
             }

@@ -75,6 +75,11 @@ import com.ambacoding.ambatap.domain.model.Schedule
 import com.ambacoding.ambatap.domain.model.ScreenInfo
 import com.ambacoding.ambatap.domain.model.TextMatch
 import com.ambacoding.ambatap.domain.model.TimedPoint
+import com.ambacoding.ambatap.domain.model.center
+import com.ambacoding.ambatap.domain.model.durationMs
+import com.ambacoding.ambatap.domain.model.pinchGesture
+import com.ambacoding.ambatap.domain.model.reversed
+import com.ambacoding.ambatap.domain.model.withCenter
 import com.ambacoding.ambatap.domain.model.totalDurationMs
 import com.ambacoding.ambatap.domain.model.withDelay
 import com.ambacoding.ambatap.domain.model.withDuration
@@ -628,11 +633,15 @@ private fun ActionEditor(action: MacroAction, screen: ScreenInfo, onChange: (Mac
                     )
                 }
             }
-            is MacroAction.MultiTouch -> Text(
-                "Gesture multi-touch belum bisa diedit; hanya jedanya.",
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
+            is MacroAction.MultiTouch -> action.center?.let { (cx, cy) ->
+                PointFields("Pusat", toPx(cx, w), toPx(cy, h), w, h) { x, y ->
+                    onChange(action.withCenter(fromPx(x, w), fromPx(y, h)))
+                }
+                DurationField(action.durationMs) { onChange(action.withDuration(it)) }
+                OutlinedButton(onClick = { onChange(action.reversed()) }, modifier = Modifier.fillMaxWidth()) {
+                    Text("Balik arah gerakan (zoom masuk ↔ keluar)")
+                }
+            }
         }
         NumberField(
             value = action.delayBeforeMs,
@@ -812,6 +821,7 @@ private val NewActions: List<Pair<String, () -> MacroAction>> = listOf(
     "Beranda" to { MacroAction.GlobalAction(GlobalType.HOME, delayBeforeMs = 300) },
     "Buka aplikasi" to { MacroAction.LaunchApp("", delayBeforeMs = 300) },
     "Ketik teks" to { MacroAction.InputText("", delayBeforeMs = 300) },
+    "Cubit (zoom)" to { pinchGesture(0.5f, 0.5f, startSpan = 0.15f, endSpan = 0.6f, durationMs = 400, delayBeforeMs = 300) },
     "Tunggu teks" to { MacroAction.WaitForText("") },
     "Tunggu warna" to { MacroAction.WaitForColor(0.5f, 0.5f) },
 )

@@ -1,6 +1,7 @@
 package com.ambacoding.ambatap.engine.recorder
 
 import com.ambacoding.ambatap.domain.model.MacroAction
+import com.ambacoding.ambatap.domain.model.Stroke
 import com.ambacoding.ambatap.domain.model.TimedPoint
 import com.ambacoding.ambatap.engine.player.ScreenSize
 import kotlin.math.hypot
@@ -39,5 +40,42 @@ object GestureClassifier {
         }
     }
 
+    /**
+     * Seperti [classify], tetapi untuk satu sentuhan dengan beberapa jari (satu daftar sampel
+     * per jari, urut waktu jari turun). Satu jari diklasifikasi biasa; lebih dari satu menjadi
+     * [MacroAction.MultiTouch] dengan jalur tiap jari disederhanakan.
+     */
+    fun classifyMulti(
+        fingers: List<List<TouchSample>>,
+        screen: ScreenSize,
+        touchSlopPx: Float,
+        longPressMs: Long,
+        simplifyEpsilonPx: Float,
+    ): MacroAction {
+        val present = fingers.filter { it.isNotEmpty() }
+        require(present.isNotEmpty()) { "fingers must not be empty" }
+        if (present.size == 1) return classify(present.single(), screen, touchSlopPx, longPressMs, simplifyEpsilonPx)
+
+        val startMs = present.minOf { it.first().tMs }
+        return MacroAction.MultiTouch(
+            strokes = present.take(MAX_FINGERS).map { samples ->
+                val first = samples.first()
+                Stroke(
+                    points = PathSimplifier.simplify(samples, simplifyEpsilonPx).map {
+                        TimedPoint(
+                            (it.x / screen.widthPx).coerceIn(0f, 1f),
+                            (it.y / screen.heightPx).coerceIn(0f, 1f),
+                            it.tMs - first.tMs,
+                        )
+                    },
+                    startDelayMs = first.tMs - startMs,
+                )
+            },
+        )
+    }
+
     private const val MIN_DURATION_MS = 1L
+
+    /** Batas aman jumlah jari untuk `GestureDescription` (minimal 10 di semua versi). */
+    const val MAX_FINGERS = 10
 }

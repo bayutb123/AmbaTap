@@ -326,7 +326,8 @@ siapkan juga opsi distribusi via GitHub Releases/F-Droid). Tambahkan juga pandua
 - [x] Aksi bersyarat: tunggu teks/elemen (`AccessibilityNodeInfo`) atau warna piksel
       (`takeScreenshot()` API 30+).
 - [x] Jadwal eksekusi (AlarmManager exact / WorkManager) + trigger saat app tertentu dibuka.
-- [ ] Multi-touch recording (via Shizuku) & playback pinch/zoom.
+- [x] Multi-touch recording & playback pinch/zoom. Ternyata cukup lewat lapisan overlay
+      (MotionEvent sudah membawa semua pointer); Shizuku tidak diperlukan untuk ini.
 
 ---
 

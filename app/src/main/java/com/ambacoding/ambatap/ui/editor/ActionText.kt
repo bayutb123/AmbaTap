@@ -3,6 +3,7 @@ package com.ambacoding.ambatap.ui.editor
 import com.ambacoding.ambatap.domain.model.GlobalType
 import com.ambacoding.ambatap.domain.model.MacroAction
 import com.ambacoding.ambatap.domain.model.ScreenInfo
+import com.ambacoding.ambatap.domain.model.durationMs
 import com.ambacoding.ambatap.engine.player.ColorMatcher
 import kotlin.math.roundToInt
 
@@ -33,7 +34,7 @@ fun MacroAction.detail(screen: ScreenInfo): String {
         is MacroAction.Tap -> px(x, y)
         is MacroAction.LongPress -> "${px(x, y)} · $durationMs ms"
         is MacroAction.Swipe -> "${points.size} titik · $durationMs ms"
-        is MacroAction.MultiTouch -> "${strokes.size} jari"
+        is MacroAction.MultiTouch -> "${strokes.size} jari · $durationMs ms"
         is MacroAction.Wait -> seconds(durationMs)
         is MacroAction.GlobalAction -> "aksi global"
         is MacroAction.LaunchApp -> packageName.ifEmpty { "belum diisi" }

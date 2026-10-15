@@ -20,6 +20,8 @@ import com.ambacoding.ambatap.domain.model.MacroAction
 import com.ambacoding.ambatap.domain.model.PlaybackConfig
 import com.ambacoding.ambatap.domain.model.RepeatMode
 import com.ambacoding.ambatap.domain.model.TimedPoint
+import com.ambacoding.ambatap.domain.model.center
+import com.ambacoding.ambatap.domain.model.withCenter
 import com.ambacoding.ambatap.domain.model.withEndpoints
 import com.ambacoding.ambatap.domain.repository.MacroRepository
 import com.ambacoding.ambatap.domain.repository.SettingsRepository
@@ -155,6 +157,8 @@ class PointPickerController(
         actions.forEachIndexed { i, action ->
             when (action) {
                 is MacroAction.Tap, is MacroAction.LongPress, is MacroAction.WaitForColor -> add(Handle(i, End.SINGLE))
+                // Multi-touch dipindah utuh lewat satu pegangan di titik tengahnya.
+                is MacroAction.MultiTouch -> if (action.center != null) add(Handle(i, End.SINGLE))
                 is MacroAction.Swipe -> if (action.points.isNotEmpty()) {
                     add(Handle(i, End.START))
                     add(Handle(i, End.END))
@@ -168,6 +172,7 @@ class PointPickerController(
         is MacroAction.Tap -> action.x to action.y
         is MacroAction.LongPress -> action.x to action.y
         is MacroAction.WaitForColor -> action.x to action.y
+        is MacroAction.MultiTouch -> action.center
         is MacroAction.Swipe -> when (handle.end) {
             End.END -> action.points.lastOrNull()?.let { it.x to it.y }
             else -> action.points.firstOrNull()?.let { it.x to it.y }
@@ -199,6 +204,7 @@ class PointPickerController(
             is MacroAction.Tap -> action.copy(x = x, y = y)
             is MacroAction.LongPress -> action.copy(x = x, y = y)
             is MacroAction.WaitForColor -> action.copy(x = x, y = y)
+            is MacroAction.MultiTouch -> action.withCenter(x, y)
             is MacroAction.Swipe -> {
                 val start = action.points.first()
                 val end = action.points.last()
