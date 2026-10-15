@@ -15,12 +15,23 @@ data class PlaybackState(
     val countdownMs: Long = 0,
     /** Orientasi layar (potret/lanskap) berbeda dengan saat macro direkam; posisi bisa meleset. */
     val orientationMismatch: Boolean = false,
-    /** Alasan pemutaran terakhir gagal dimulai; dibersihkan saat play berikutnya. */
+    /** Alasan pemutaran terakhir gagal dimulai atau berhenti lebih awal; dibersihkan saat play berikutnya. */
     val error: PlaybackError? = null,
+    /** Nomor aksi (mulai 1) tempat pemutaran berhenti karena [error]. */
+    val errorActionNumber: Int? = null,
 ) {
     enum class Status { IDLE, COUNTDOWN, PLAYING, PAUSED }
 
     val isActive: Boolean get() = status != Status.IDLE
 }
 
-enum class PlaybackError { SERVICE_NOT_CONNECTED, EMPTY_MACRO }
+enum class PlaybackError {
+    SERVICE_NOT_CONNECTED,
+    EMPTY_MACRO,
+
+    /** Aksi bersyarat tidak terpenuhi sampai batas waktu dan diatur untuk menghentikan macro. */
+    CONDITION_TIMEOUT,
+
+    /** Aksi tunggu warna butuh tangkapan layar, yang baru ada di Android 11. */
+    SCREEN_CAPTURE_UNSUPPORTED,
+}

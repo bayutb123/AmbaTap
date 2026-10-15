@@ -1,8 +1,11 @@
 package com.ambacoding.ambatap.ui.editor
 
 import androidx.activity.compose.BackHandler
+import android.os.Build
 import androidx.activity.compose.LocalActivity
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -13,6 +16,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
@@ -34,6 +38,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -44,20 +49,25 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.ambacoding.ambatap.domain.model.GlobalType
 import com.ambacoding.ambatap.domain.model.MacroAction
+import com.ambacoding.ambatap.domain.model.OnTimeout
 import com.ambacoding.ambatap.domain.model.PlaybackConfig
 import com.ambacoding.ambatap.domain.model.RepeatMode
 import com.ambacoding.ambatap.domain.model.ScreenInfo
+import com.ambacoding.ambatap.domain.model.TextMatch
 import com.ambacoding.ambatap.domain.model.TimedPoint
 import com.ambacoding.ambatap.domain.model.totalDurationMs
 import com.ambacoding.ambatap.domain.model.withDelay
 import com.ambacoding.ambatap.domain.model.withDuration
 import com.ambacoding.ambatap.domain.model.withEndpoints
+import com.ambacoding.ambatap.engine.player.ColorMatcher
 import com.ambacoding.ambatap.ui.components.AmbaIcons
 import com.ambacoding.ambatap.ui.components.NumberField
 import com.ambacoding.ambatap.ui.components.SegmentedRow
@@ -403,6 +413,57 @@ private fun ActionEditor(action: MacroAction, screen: ScreenInfo, onChange: (Mac
                 label = { Text("Teks untuk kolom yang sedang fokus") },
                 modifier = Modifier.fillMaxWidth(),
             )
+            is MacroAction.WaitForText -> {
+                OutlinedTextField(
+                    value = action.text,
+                    onValueChange = { onChange(action.copy(text = it)) },
+                    label = { Text("Teks atau deskripsi elemen") },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+                SegmentedRow(
+                    options = listOf("Mengandung", "Sama persis"),
+                    selected = if (action.match == TextMatch.EXACT) 1 else 0,
+                    onSelect = { onChange(action.copy(match = if (it == 1) TextMatch.EXACT else TextMatch.CONTAINS)) },
+                )
+                ConditionFields(
+                    presentLabels = "Muncul" to "Hilang",
+                    tapLabel = "Tap elemen saat muncul",
+                    present = action.present,
+                    tapOnFound = action.tapOnFound,
+                    timeoutMs = action.timeoutMs,
+                    onTimeout = action.onTimeout,
+                    onChange = { present, tap, timeout, behavior ->
+                        onChange(action.copy(present = present, tapOnFound = tap, timeoutMs = timeout, onTimeout = behavior))
+                    },
+                )
+            }
+            is MacroAction.WaitForColor -> {
+                PointFields("Titik", toPx(action.x, w), toPx(action.y, h), w, h) { x, y ->
+                    onChange(action.copy(x = fromPx(x, w), y = fromPx(y, h)))
+                }
+                ColorFields(action.color, action.tolerance) { color, tolerance ->
+                    onChange(action.copy(color = color, tolerance = tolerance))
+                }
+                ConditionFields(
+                    presentLabels = "Cocok" to "Berubah",
+                    tapLabel = "Tap titik ini saat cocok",
+                    present = action.present,
+                    tapOnFound = action.tapOnFound,
+                    timeoutMs = action.timeoutMs,
+                    onTimeout = action.onTimeout,
+                    onChange = { present, tap, timeout, behavior ->
+                        onChange(action.copy(present = present, tapOnFound = tap, timeoutMs = timeout, onTimeout = behavior))
+                    },
+                )
+                if (Build.VERSION.SDK_INT < Build.VERSION_CODES.R) {
+                    Text(
+                        "Butuh Android 11 atau lebih baru; di perangkat ini macro akan berhenti di aksi ini.",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.error,
+                    )
+                }
+            }
             is MacroAction.MultiTouch -> Text(
                 "Gesture multi-touch belum bisa diedit; hanya jedanya.",
                 style = MaterialTheme.typography.bodyMedium,
@@ -439,6 +500,84 @@ private fun PointFields(label: String, x: Long, y: Long, width: Int, height: Int
             modifier = Modifier.weight(1f),
         )
     }
+}
+
+/** Bagian bersama aksi bersyarat: tunggu sampai apa, tap atau tidak, batas waktu, dan bila gagal. */
+@Composable
+private fun ConditionFields(
+    presentLabels: Pair<String, String>,
+    tapLabel: String,
+    present: Boolean,
+    tapOnFound: Boolean,
+    timeoutMs: Long,
+    onTimeout: OnTimeout,
+    onChange: (present: Boolean, tap: Boolean, timeoutMs: Long, onTimeout: OnTimeout) -> Unit,
+) {
+    Label("Tunggu sampai")
+    SegmentedRow(
+        options = listOf(presentLabels.first, presentLabels.second),
+        selected = if (present) 0 else 1,
+        onSelect = { onChange(it == 0, tapOnFound, timeoutMs, onTimeout) },
+    )
+    if (present) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text(tapLabel, style = MaterialTheme.typography.bodyLarge, modifier = Modifier.weight(1f))
+            Switch(checked = tapOnFound, onCheckedChange = { onChange(present, it, timeoutMs, onTimeout) })
+        }
+    }
+    NumberField(
+        value = timeoutMs,
+        onValueChange = { onChange(present, tapOnFound, it, onTimeout) },
+        label = "Batas waktu",
+        suffix = "ms",
+        range = 100L..3_600_000L,
+        modifier = Modifier.fillMaxWidth(),
+    )
+    Label("Bila batas waktu habis")
+    SegmentedRow(
+        options = listOf("Hentikan macro", "Lanjutkan"),
+        selected = if (onTimeout == OnTimeout.STOP) 0 else 1,
+        onSelect = { onChange(present, tapOnFound, timeoutMs, if (it == 0) OnTimeout.STOP else OnTimeout.CONTINUE) },
+    )
+}
+
+@Composable
+private fun ColorFields(color: Int, tolerance: Int, onChange: (color: Int, tolerance: Int) -> Unit) {
+    var hex by remember(color) { mutableStateOf(if (color == 0) "" else ColorMatcher.toHex(color).removePrefix("#")) }
+    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        Box(
+            modifier = Modifier
+                .size(48.dp)
+                .clip(RoundedCornerShape(12.dp))
+                .background(if (color == 0) Color.Transparent else Color(color))
+                .border(1.dp, MaterialTheme.colorScheme.outline, RoundedCornerShape(12.dp)),
+        )
+        OutlinedTextField(
+            value = hex,
+            onValueChange = { input ->
+                hex = input.filter { it.isLetterOrDigit() }.take(6).uppercase()
+                ColorMatcher.parseHex(hex)?.let { onChange(it, tolerance) }
+            },
+            label = { Text("Warna") },
+            prefix = { Text("#") },
+            placeholder = { Text("ambil di layar") },
+            singleLine = true,
+            textStyle = MonoStyle,
+            modifier = Modifier.weight(1f),
+        )
+        NumberField(
+            value = tolerance.toLong(),
+            onValueChange = { onChange(color, it.toInt()) },
+            label = "Toleransi",
+            range = 0L..255L,
+            modifier = Modifier.weight(1f),
+        )
+    }
+    Text(
+        "Ambil warna langsung dari layar lewat \"Atur posisi di layar\".",
+        style = MaterialTheme.typography.bodyMedium,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+    )
 }
 
 @Composable
@@ -509,4 +648,6 @@ private val NewActions: List<Pair<String, () -> MacroAction>> = listOf(
     "Beranda" to { MacroAction.GlobalAction(GlobalType.HOME, delayBeforeMs = 300) },
     "Buka aplikasi" to { MacroAction.LaunchApp("", delayBeforeMs = 300) },
     "Ketik teks" to { MacroAction.InputText("", delayBeforeMs = 300) },
+    "Tunggu teks" to { MacroAction.WaitForText("") },
+    "Tunggu warna" to { MacroAction.WaitForColor(0.5f, 0.5f) },
 )

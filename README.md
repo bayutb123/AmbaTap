@@ -13,6 +13,9 @@ Rekam tap, long press, dan swipe di aplikasi mana pun lalu putar ulang otomatis,
   **berhenti darurat** dengan menekan volume turun 2×.
 - **Editor**: ubah koordinat, durasi, dan jeda; urutkan; sisipkan Tunggu, Kembali, Beranda,
   Buka aplikasi, atau Ketik teks.
+- **Aksi bersyarat**: tunggu sampai teks/elemen muncul atau hilang (opsional langsung di-tap),
+  atau tunggu warna piksel tertentu (Android 11+; warna diambil langsung dari layar di
+  pemilih titik). Bila batas waktu habis, macro berhenti atau lanjut sesuai pilihan.
 - **Impor/ekspor** macro sebagai file JSON, **Quick Settings tile**, indikator sentuhan,
   peringatan bila orientasi layar berbeda dari saat direkam.
 - Semua data tersimpan di perangkat; aplikasi tidak memiliki izin internet.
@@ -57,6 +60,11 @@ Bila SDK tidak terdeteksi otomatis, buat `local.properties` berisi `sdk.dir=/pat
    Tekan volume turun 2× untuk berhenti kapan saja.
 
 ### Batasan yang diketahui
+
+- Aksi "Tunggu warna" membaca tangkapan layar, jadi panel AmbaTap atau indikator sentuhan
+  yang kebetulan menutupi titik tersebut ikut terbaca. Letakkan panel di tempat lain.
+- "Tunggu teks" hanya menemukan teks yang dibuka ke layanan aksesibilitas; teks di dalam
+  game/kanvas biasanya tidak terbaca, gunakan "Tunggu warna" untuk itu.
 
 - Saat merekam, swipe/scroll baru terjadi di aplikasi setelah jari diangkat, dan sentuhan
   yang terjadi selagi gesture sebelumnya masih diteruskan tidak ikut terekam.

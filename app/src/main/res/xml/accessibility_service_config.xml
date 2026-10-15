@@ -1,11 +1,15 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!-- canTakeScreenshot hanya berlaku di API 30+; di bawahnya aksi tunggu warna tidak tersedia. -->
 <accessibility-service xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
     android:accessibilityEventTypes="typeWindowStateChanged"
     android:accessibilityFeedbackType="feedbackGeneric"
-    android:accessibilityFlags="flagRequestFilterKeyEvents|flagReportViewIds"
+    android:accessibilityFlags="flagRequestFilterKeyEvents|flagReportViewIds|flagRetrieveInteractiveWindows"
     android:canPerformGestures="true"
     android:canRequestFilterKeyEvents="true"
     android:canRetrieveWindowContent="true"
+    android:canTakeScreenshot="true"
+    tools:ignore="UnusedAttribute"
     android:description="@string/accessibility_service_description"
     android:notificationTimeout="100"
     android:summary="@string/accessibility_service_summary" />

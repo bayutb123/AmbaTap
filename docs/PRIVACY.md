@@ -22,9 +22,17 @@ AmbaTap memakai API Layanan Aksesibilitas Android (`AccessibilityService`) hanya
    Tombol hanya ditahan selama macro berjalan.
 4. **Mengisi teks** ke kolom yang sedang fokus, hanya bila Anda menambahkan aksi "Ketik teks"
    ke macro.
+5. **Memeriksa isi layar untuk aksi bersyarat**, hanya bila Anda menambahkan aksi tersebut:
+   - "Tunggu teks" mencari teks/deskripsi elemen di layar yang cocok dengan kata kunci Anda.
+   - "Tunggu warna" mengambil tangkapan layar (Android 11+) dan membaca warna **satu piksel**
+     di titik yang Anda pilih.
 
-Saat merekam, AmbaTap mencatat **koordinat dan waktu sentuhan Anda** pada layar. AmbaTap tidak
-membaca isi layar, teks, kata sandi, atau notifikasi aplikasi lain.
+   Pemeriksaan berlangsung di memori saat macro berjalan. Isi layar dan tangkapan layar
+   tidak disimpan, tidak dicatat, dan tidak dikirim ke mana pun; yang tersimpan hanyalah
+   kata kunci dan warna yang Anda atur di macro.
+
+Saat merekam, AmbaTap mencatat **koordinat dan waktu sentuhan Anda** pada layar. Di luar aksi
+bersyarat di atas, AmbaTap tidak membaca isi layar, teks, kata sandi, atau notifikasi aplikasi lain.
 
 ## Data yang disimpan
 

@@ -12,6 +12,8 @@ fun MacroAction.withDelay(delayMs: Long): MacroAction {
         is MacroAction.GlobalAction -> copy(delayBeforeMs = delay)
         is MacroAction.LaunchApp -> copy(delayBeforeMs = delay)
         is MacroAction.InputText -> copy(delayBeforeMs = delay)
+        is MacroAction.WaitForText -> copy(delayBeforeMs = delay)
+        is MacroAction.WaitForColor -> copy(delayBeforeMs = delay)
     }
 }
 

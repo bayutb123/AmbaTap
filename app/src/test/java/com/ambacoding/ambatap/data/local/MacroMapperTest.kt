@@ -3,10 +3,12 @@ package com.ambacoding.ambatap.data.local
 import com.ambacoding.ambatap.domain.model.GlobalType
 import com.ambacoding.ambatap.domain.model.Macro
 import com.ambacoding.ambatap.domain.model.MacroAction
+import com.ambacoding.ambatap.domain.model.OnTimeout
 import com.ambacoding.ambatap.domain.model.PlaybackConfig
 import com.ambacoding.ambatap.domain.model.RepeatMode
 import com.ambacoding.ambatap.domain.model.ScreenInfo
 import com.ambacoding.ambatap.domain.model.Stroke
+import com.ambacoding.ambatap.domain.model.TextMatch
 import com.ambacoding.ambatap.domain.model.TimedPoint
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
@@ -35,6 +37,8 @@ class MacroMapperTest {
             MacroAction.GlobalAction(GlobalType.BACK, delayBeforeMs = 300),
             MacroAction.LaunchApp("com.example.game"),
             MacroAction.InputText("halo"),
+            MacroAction.WaitForText("Lanjut", TextMatch.EXACT, tapOnFound = true, onTimeout = OnTimeout.CONTINUE),
+            MacroAction.WaitForColor(0.2f, 0.9f, color = 0xFF22C55E.toInt(), tolerance = 10, present = false),
         ),
         screen = ScreenInfo(widthPx = 1080, heightPx = 2400, rotation = 0),
         config = PlaybackConfig(repeat = RepeatMode.Infinite, speed = 1.5f, randomOffsetPx = 4),

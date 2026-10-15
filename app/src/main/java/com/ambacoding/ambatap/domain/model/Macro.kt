@@ -62,6 +62,14 @@ data class Stroke(val points: List<TimedPoint>, val startDelayMs: Long = 0)
 @Serializable
 enum class GlobalType { BACK, HOME, RECENTS, NOTIFICATIONS }
 
+/** Cara mencocokkan teks elemen dengan kata kunci; keduanya tanpa membedakan huruf besar/kecil. */
+@Serializable
+enum class TextMatch { CONTAINS, EXACT }
+
+/** Yang dilakukan bila kondisi tidak terpenuhi sampai batas waktu. */
+@Serializable
+enum class OnTimeout { CONTINUE, STOP }
+
 @Serializable
 sealed interface MacroAction {
     /** Jeda sebelum aksi ini dijalankan, dihitung dari akhir aksi sebelumnya. */
@@ -125,6 +133,43 @@ sealed interface MacroAction {
     @SerialName("input_text")
     data class InputText(
         val text: String,
+        override val delayBeforeMs: Long = 0,
+    ) : MacroAction
+
+    /**
+     * Menunggu sampai ada elemen di layar yang teks atau deskripsinya cocok dengan [text]
+     * (atau, bila [present] `false`, sampai elemen itu hilang).
+     */
+    @Serializable
+    @SerialName("wait_text")
+    data class WaitForText(
+        val text: String,
+        val match: TextMatch = TextMatch.CONTAINS,
+        val present: Boolean = true,
+        /** Tap di tengah elemen yang ditemukan; hanya berlaku bila [present]. */
+        val tapOnFound: Boolean = false,
+        val timeoutMs: Long = 10_000,
+        val onTimeout: OnTimeout = OnTimeout.STOP,
+        override val delayBeforeMs: Long = 0,
+    ) : MacroAction
+
+    /**
+     * Menunggu sampai warna piksel di ([x], [y]) cocok dengan [color] dalam batas [tolerance]
+     * per kanal (atau, bila [present] `false`, sampai tidak cocok lagi). Butuh Android 11+.
+     */
+    @Serializable
+    @SerialName("wait_color")
+    data class WaitForColor(
+        val x: Float,
+        val y: Float,
+        /** ARGB; alfa diabaikan. 0 berarti warna belum diambil. */
+        val color: Int = 0,
+        val tolerance: Int = 24,
+        val present: Boolean = true,
+        /** Tap di titik ini saat warnanya cocok; hanya berlaku bila [present]. */
+        val tapOnFound: Boolean = false,
+        val timeoutMs: Long = 10_000,
+        val onTimeout: OnTimeout = OnTimeout.STOP,
         override val delayBeforeMs: Long = 0,
     ) : MacroAction
 }

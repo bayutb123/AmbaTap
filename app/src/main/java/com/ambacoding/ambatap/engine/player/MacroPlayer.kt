@@ -3,6 +3,7 @@ package com.ambacoding.ambatap.engine.player
 import com.ambacoding.ambatap.di.ApplicationScope
 import com.ambacoding.ambatap.domain.model.Macro
 import com.ambacoding.ambatap.domain.model.MacroAction
+import com.ambacoding.ambatap.domain.model.OnTimeout
 import com.ambacoding.ambatap.domain.model.PlaybackConfig
 import com.ambacoding.ambatap.domain.model.RepeatMode
 import com.ambacoding.ambatap.domain.model.ScreenInfo
@@ -92,11 +93,14 @@ class MacroPlayer(
             orientationMismatch = macro.screen.isLandscape != controller.screenSize.isLandscape,
         )
         job = scope.launch {
+            var failure: Failure? = null
             try {
                 countdown(startDelayMs)
-                run(macro, controller)
+                failure = run(macro, controller)
             } finally {
-                if (gen == generation) _state.value = PlaybackState()
+                if (gen == generation) {
+                    _state.value = PlaybackState(error = failure?.error, errorActionNumber = failure?.actionNumber)
+                }
             }
         }
     }
@@ -137,7 +141,10 @@ class MacroPlayer(
         _state.update { it.copy(status = Status.PLAYING, countdownMs = 0) }
     }
 
-    private suspend fun run(macro: Macro, controller: InputController) {
+    /** Alasan pemutaran berhenti sebelum selesai. */
+    private class Failure(val error: PlaybackError, val actionNumber: Int)
+
+    private suspend fun run(macro: Macro, controller: InputController): Failure? {
         val config = macro.config
         val repeat = config.repeat
         val started = timeSource.markNow()
@@ -147,21 +154,22 @@ class MacroPlayer(
         var loop = 0
         while (true) {
             loop++
-            if (repeat is RepeatMode.Count && loop > repeat.times.coerceAtLeast(1)) return
-            if (timeUp()) return
+            if (repeat is RepeatMode.Count && loop > repeat.times.coerceAtLeast(1)) return null
+            if (timeUp()) return null
             if (loop > 1) pausableDelay(scaledDelay(config.delayBetweenLoopsMs, config))
 
             for ((index, action) in macro.actions.withIndex()) {
-                if (timeUp()) return
+                if (timeUp()) return null
                 _state.update { it.copy(loop = loop, actionIndex = index) }
                 pausableDelay(scaledDelay(action.delayBeforeMs, config))
                 awaitResumed()
-                perform(action, controller, config)
+                perform(action, controller, config)?.let { return Failure(it, index + 1) }
             }
         }
     }
 
-    private suspend fun perform(action: MacroAction, controller: InputController, config: PlaybackConfig) {
+    /** @return alasan macro harus berhenti, atau `null` untuk lanjut ke aksi berikutnya. */
+    private suspend fun perform(action: MacroAction, controller: InputController, config: PlaybackConfig): PlaybackError? {
         when (action) {
             is MacroAction.Wait -> pausableDelay(GestureFactory.scale(action.durationMs, config.speed))
             is MacroAction.GlobalAction -> controller.performGlobal(action.action)
@@ -178,11 +186,62 @@ class MacroPlayer(
                     speed = config.speed,
                     jitterPx = config.randomOffsetPx,
                     random = random,
-                ) ?: return
-                _gestures.tryEmit(gesture)
-                // Gesture yang dibatalkan sistem (mis. user menyentuh layar) dilewati saja.
-                controller.dispatch(gesture)
+                ) ?: return null
+                send(gesture, controller)
             }
+            is MacroAction.WaitForText -> {
+                var found: PxPoint? = null
+                val met = awaitCondition(action.timeoutMs, TEXT_POLL_MS) {
+                    found = controller.findText(action.text, action.match)
+                    (found != null) == action.present
+                }
+                if (!met) return timeoutResult(action.onTimeout)
+                val target = found
+                if (action.present && action.tapOnFound && target != null) send(tapAt(target), controller)
+            }
+            is MacroAction.WaitForColor -> {
+                if (!controller.canReadScreen) return PlaybackError.SCREEN_CAPTURE_UNSUPPORTED
+                val screen = controller.screenSize
+                val x = (action.x * screen.widthPx).toInt().coerceIn(0, screen.widthPx - 1)
+                val y = (action.y * screen.heightPx).toInt().coerceIn(0, screen.heightPx - 1)
+                val met = awaitCondition(action.timeoutMs, COLOR_POLL_MS) {
+                    // Tangkapan yang gagal (mis. terlalu sering) dianggap belum terpenuhi.
+                    val color = controller.pixelColor(x, y) ?: return@awaitCondition false
+                    ColorMatcher.matches(color, action.color, action.tolerance) == action.present
+                }
+                if (!met) return timeoutResult(action.onTimeout)
+                if (action.present && action.tapOnFound) send(tapAt(PxPoint(x.toFloat(), y.toFloat())), controller)
+            }
+        }
+        return null
+    }
+
+    private suspend fun send(gesture: GestureSpec, controller: InputController) {
+        _gestures.tryEmit(gesture)
+        // Gesture yang dibatalkan sistem (mis. user menyentuh layar) dilewati saja.
+        controller.dispatch(gesture)
+    }
+
+    private fun tapAt(point: PxPoint) = GestureSpec(listOf(StrokeSpec(listOf(point), startMs = 0, durationMs = TAP_MS)))
+
+    private fun timeoutResult(onTimeout: OnTimeout): PlaybackError? =
+        if (onTimeout == OnTimeout.STOP) PlaybackError.CONDITION_TIMEOUT else null
+
+    /**
+     * Memeriksa [check] berulang setiap [intervalMs] hingga bernilai `true` atau [timeoutMs] habis.
+     * Batas waktu tidak ikut dipercepat [PlaybackConfig.speed] dan tidak berjalan selama pause.
+     */
+    private suspend fun awaitCondition(timeoutMs: Long, intervalMs: Long, check: suspend () -> Boolean): Boolean {
+        var waited = 0L
+        while (true) {
+            awaitResumed()
+            val mark = timeSource.markNow()
+            if (check()) return true
+            waited += mark.elapsedNow().inWholeMilliseconds
+            if (waited >= timeoutMs) return false
+            val step = minOf(intervalMs, timeoutMs - waited)
+            pausableDelay(step)
+            waited += step
         }
     }
 
@@ -213,5 +272,10 @@ class MacroPlayer(
 
     private companion object {
         const val COUNTDOWN_TICK_MS = 1_000L
+        const val TEXT_POLL_MS = 250L
+
+        /** Sistem menolak tangkapan layar yang lebih rapat dari ±333 ms. */
+        const val COLOR_POLL_MS = 500L
+        const val TAP_MS = 50L
     }
 }

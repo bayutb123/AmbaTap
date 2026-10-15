@@ -20,6 +20,9 @@ val OnRecordOrangeContainer = Color(0xFF9A3412)
 
 val ErrorRed = Color(0xFFB3261E)
 
+/** Penanda aksi bersyarat (tunggu warna) di pemilih titik. */
+val ConditionTeal = Color(0xFF0F766E)
+
 // Mode gelap
 val InkDark = Color(0xFF111317)
 val SurfaceDark = Color(0xFF1B1D22)

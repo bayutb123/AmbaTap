@@ -51,6 +51,7 @@ import com.ambacoding.ambatap.domain.model.MacroAction
 import com.ambacoding.ambatap.domain.model.RepeatMode
 import com.ambacoding.ambatap.domain.model.withDelay
 import com.ambacoding.ambatap.domain.model.withDuration
+import com.ambacoding.ambatap.engine.player.ColorMatcher
 import com.ambacoding.ambatap.engine.player.ScreenSize
 import com.ambacoding.ambatap.ui.components.AmbaIcons
 import com.ambacoding.ambatap.ui.components.SegmentedRow
@@ -73,6 +74,8 @@ class PickerActions(
     val onDelete: (Int) -> Unit,
     val onAddTap: () -> Unit,
     val onAddSwipe: () -> Unit,
+    val onAddColor: () -> Unit,
+    val onCaptureColor: (Int) -> Unit,
     val onCycleRepeat: () -> Unit,
     val onTestPlay: () -> Unit,
     val onSave: () -> Unit,
@@ -91,7 +94,8 @@ val MarkerSize = 48.dp
 val SmallMarkerSize = 36.dp
 
 val MacroAction.isPositional: Boolean
-    get() = this is MacroAction.Tap || this is MacroAction.LongPress || this is MacroAction.Swipe
+    get() = this is MacroAction.Tap || this is MacroAction.LongPress || this is MacroAction.Swipe ||
+        this is MacroAction.WaitForColor
 
 /** Lapisan layar penuh yang hanya menggambar jalur swipe; jendelanya tidak bisa disentuh. */
 @Composable
@@ -176,6 +180,7 @@ fun PickerBottomBar(
     selected: Int?,
     repeat: RepeatMode,
     screen: ScreenSize,
+    canReadScreen: Boolean,
     onDragBy: (Float, Float) -> Unit,
     callbacks: PickerActions,
 ) {
@@ -188,7 +193,7 @@ fun PickerBottomBar(
         if (selected != null && selected in actions.indices) {
             SelectedPanel(selected, actions[selected], screen, callbacks)
         }
-        Toolbar(repeat = repeat, canRun = actions.isNotEmpty(), callbacks = callbacks)
+        Toolbar(repeat = repeat, canRun = actions.isNotEmpty(), canReadScreen = canReadScreen, callbacks = callbacks)
     }
 }
 
@@ -246,13 +251,18 @@ private fun SelectedPanel(index: Int, action: MacroAction, screen: ScreenSize, c
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Text(
-                if (action is MacroAction.Swipe) "Swipe ${index + 1}" else "Titik ${index + 1}",
+                when (action) {
+                    is MacroAction.Swipe -> "Swipe ${index + 1}"
+                    is MacroAction.WaitForColor -> "Cek warna ${index + 1}"
+                    else -> "Titik ${index + 1}"
+                },
                 style = MaterialTheme.typography.titleMedium,
                 modifier = Modifier.weight(1f),
             )
             val (x, y) = when (action) {
                 is MacroAction.Tap -> action.x to action.y
                 is MacroAction.LongPress -> action.x to action.y
+                is MacroAction.WaitForColor -> action.x to action.y
                 is MacroAction.Swipe -> action.points.first().x to action.points.first().y
                 else -> 0f to 0f
             }
@@ -287,6 +297,7 @@ private fun SelectedPanel(index: Int, action: MacroAction, screen: ScreenSize, c
             is MacroAction.Swipe -> Stepper("Durasi swipe", action.durationMs, step = 50, min = 50) {
                 callbacks.onChange(index, action.withDuration(it))
             }
+            is MacroAction.WaitForColor -> ColorCapture(action) { callbacks.onCaptureColor(index) }
             else -> Unit
         }
         Stepper("Jeda sebelum", action.delayBeforeMs, step = 50, min = 0) {
@@ -302,6 +313,31 @@ private fun SelectedPanel(index: Int, action: MacroAction, screen: ScreenSize, c
     }
 }
 
+/** Warna yang ditunggu dan tombol untuk mengambilnya dari aplikasi di bawah penanda. */
+@Composable
+private fun ColorCapture(action: MacroAction.WaitForColor, onCapture: () -> Unit) {
+    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+        Box(
+            Modifier
+                .size(28.dp)
+                .clip(RoundedCornerShape(8.dp))
+                .background(if (action.color == 0) Color.Transparent else Color(action.color))
+                .border(1.dp, MaterialTheme.colorScheme.outline, RoundedCornerShape(8.dp)),
+        )
+        Text(
+            if (action.color == 0) "Belum diambil" else ColorMatcher.toHex(action.color),
+            style = MonoStyle,
+            modifier = Modifier.weight(1f),
+        )
+        TextButton(onClick = onCapture) { Text("Ambil warna") }
+    }
+    Text(
+        "Saat diputar, macro menunggu warna ini muncul di titik tersebut. Atur detailnya di editor.",
+        style = MaterialTheme.typography.bodySmall,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+    )
+}
+
 @Composable
 private fun Stepper(label: String, value: Long, step: Long, min: Long, onChange: (Long) -> Unit) {
     Row(verticalAlignment = Alignment.CenterVertically) {
@@ -313,7 +349,7 @@ private fun Stepper(label: String, value: Long, step: Long, min: Long, onChange:
 }
 
 @Composable
-private fun Toolbar(repeat: RepeatMode, canRun: Boolean, callbacks: PickerActions) {
+private fun Toolbar(repeat: RepeatMode, canRun: Boolean, canReadScreen: Boolean, callbacks: PickerActions) {
     Row(
         horizontalArrangement = Arrangement.spacedBy(4.dp),
         modifier = Modifier
@@ -323,6 +359,9 @@ private fun Toolbar(repeat: RepeatMode, canRun: Boolean, callbacks: PickerAction
     ) {
         ToolButton(AmbaIcons.Plus, "Titik", onClick = callbacks.onAddTap, modifier = Modifier.weight(1f))
         ToolButton(AmbaIcons.Swipe, "Swipe", onClick = callbacks.onAddSwipe, modifier = Modifier.weight(1f))
+        if (canReadScreen) {
+            ToolButton(AmbaIcons.Eyedropper, "Warna", onClick = callbacks.onAddColor, modifier = Modifier.weight(1f))
+        }
         ToolButton(AmbaIcons.Repeat, "Ulang ${repeat.label()}", onClick = callbacks.onCycleRepeat, modifier = Modifier.weight(1f))
         ToolButton(
             AmbaIcons.Play,

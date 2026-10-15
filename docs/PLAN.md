@@ -323,7 +323,7 @@ siapkan juga opsi distribusi via GitHub Releases/F-Droid). Tambahkan juga pandua
 - [ ] Mode presisi via Shizuku: parsing `getevent -lt` (multi-touch protocol B,
       skala raw → piksel via `getevent -p`), rekam real-time tanpa overlay penangkap.
 - [ ] Spike `onMotionEvent` (API 34+) sebagai alternatif tanpa Shizuku.
-- [ ] Aksi bersyarat: tunggu teks/elemen (`AccessibilityNodeInfo`) atau warna piksel
+- [x] Aksi bersyarat: tunggu teks/elemen (`AccessibilityNodeInfo`) atau warna piksel
       (`takeScreenshot()` API 30+).
 - [ ] Jadwal eksekusi (AlarmManager exact / WorkManager) + trigger saat app tertentu dibuka.
 - [ ] Multi-touch recording (via Shizuku) & playback pinch/zoom.
