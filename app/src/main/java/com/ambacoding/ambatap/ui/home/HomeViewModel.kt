@@ -6,6 +6,7 @@ import androidx.lifecycle.viewModelScope
 import com.ambacoding.ambatap.data.transfer.MacroFiles
 import com.ambacoding.ambatap.domain.model.Macro
 import com.ambacoding.ambatap.domain.model.MacroAction
+import com.ambacoding.ambatap.domain.model.MacroTriggers
 import com.ambacoding.ambatap.domain.model.PlaybackConfig
 import com.ambacoding.ambatap.domain.model.RepeatMode
 import com.ambacoding.ambatap.domain.model.ScreenInfo
@@ -38,6 +39,8 @@ data class MacroItem(
     val actionCount: Int,
     val durationMs: Long,
     val repeatLabel: String,
+    /** Ringkasan pemicu aktif, mis. "08:30" atau "buka aplikasi"; `null` bila tidak ada. */
+    val triggerLabel: String? = null,
 )
 
 data class HomeUiState(
@@ -137,7 +140,9 @@ class HomeViewModel @Inject constructor(
         viewModelScope.launch {
             val macro = macroRepository.getMacro(id) ?: return@launch
             val now = System.currentTimeMillis()
-            macroRepository.save(macro.copy(id = 0, name = "${macro.name} (salinan)", createdAt = now, updatedAt = now))
+            // Pemicu tidak ikut disalin agar jadwal yang sama tidak berjalan dua kali.
+            val copy = macro.copy(id = 0, name = "${macro.name} (salinan)", triggers = MacroTriggers(), createdAt = now, updatedAt = now)
+            macroRepository.save(copy)
         }
     }
 
@@ -171,5 +176,11 @@ class HomeViewModel @Inject constructor(
         actionCount = actions.size,
         durationMs = actions.totalDurationMs(),
         repeatLabel = config.repeat.label(),
+        triggerLabel = triggers.label(),
     )
+
+    private fun MacroTriggers.label(): String? = listOfNotNull(
+        schedule?.takeIf { it.enabled }?.let { "%02d:%02d".format(it.hour, it.minute) },
+        appOpen?.takeIf { it.isActive }?.let { "buka aplikasi" },
+    ).joinToString(" · ").ifEmpty { null }
 }

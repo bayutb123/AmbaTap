@@ -2,6 +2,9 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <!-- Jadwal macro: alarm tepat waktu dan pemasangan ulang setelah perangkat menyala. -->
+    <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
 
     <application
         android:name=".AmbaTapApp"
@@ -37,6 +40,23 @@
         <receiver
             android:name=".service.notification.PlaybackActionReceiver"
             android:exported="false" />
+
+        <receiver
+            android:name=".service.trigger.ScheduleAlarmReceiver"
+            android:exported="false" />
+
+        <!-- Diekspor agar menerima siaran sistem; hanya menghitung ulang alarm. -->
+        <receiver
+            android:name=".service.trigger.ScheduleRestoreReceiver"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.BOOT_COMPLETED" />
+                <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
+                <action android:name="android.intent.action.TIME_SET" />
+                <action android:name="android.intent.action.TIMEZONE_CHANGED" />
+                <action android:name="android.app.action.SCHEDULE_EXACT_ALARM_PERMISSION_STATE_CHANGED" />
+            </intent-filter>
+        </receiver>
 
         <service
             android:name=".service.PanelTileService"

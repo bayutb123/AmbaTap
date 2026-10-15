@@ -16,6 +16,7 @@ import android.widget.Toast
 import androidx.annotation.RequiresApi
 import androidx.core.graphics.get
 import com.ambacoding.ambatap.domain.model.GlobalType
+import com.ambacoding.ambatap.domain.model.Macro
 import com.ambacoding.ambatap.domain.model.TextMatch
 import com.ambacoding.ambatap.domain.repository.MacroRepository
 import com.ambacoding.ambatap.domain.repository.SettingsRepository
@@ -34,6 +35,8 @@ import com.ambacoding.ambatap.service.overlay.PointPickerController
 import com.ambacoding.ambatap.service.overlay.PointPickerRequests
 import com.ambacoding.ambatap.service.overlay.RecordingController
 import com.ambacoding.ambatap.service.overlay.TouchIndicatorController
+import com.ambacoding.ambatap.service.trigger.ForegroundAppTracker
+import com.ambacoding.ambatap.service.trigger.TriggerLauncher
 import dagger.hilt.android.AndroidEntryPoint
 import javax.inject.Inject
 import kotlin.coroutines.resume
@@ -57,8 +60,13 @@ class AmbaTapAccessibilityService : AccessibilityService(), InputController {
     @Inject lateinit var recorder: MacroRecorder
     @Inject lateinit var macroRepository: MacroRepository
     @Inject lateinit var pickerRequests: PointPickerRequests
+    @Inject lateinit var triggerLauncher: TriggerLauncher
 
     private val emergencyStop = EmergencyStopDetector()
+    private val foregroundApps by lazy { ForegroundAppTracker(ignored = setOf(packageName)) }
+
+    /** Macro dengan pemicu buka aplikasi aktif, menurut nama paket aplikasinya. */
+    private var appOpenMacros: Map<String, Macro> = emptyMap()
 
     private var scope: CoroutineScope? = null
     private var panel: PanelController? = null
@@ -89,6 +97,13 @@ class AmbaTapAccessibilityService : AccessibilityService(), InputController {
             player.state
                 .distinctUntilChangedBy { listOf(it.status, it.loop, it.macroName, (it.countdownMs + 999) / 1000) }
                 .collect(notifier::update)
+        }
+        scope.launch {
+            macroRepository.observeMacros().collect { macros ->
+                appOpenMacros = macros
+                    .mapNotNull { macro -> macro.triggers.appOpen?.takeIf { it.isActive }?.let { it.packageName to macro } }
+                    .toMap()
+            }
         }
         scope.launch {
             player.state
@@ -125,7 +140,25 @@ class AmbaTapAccessibilityService : AccessibilityService(), InputController {
         notifier.cancel()
     }
 
-    override fun onAccessibilityEvent(event: AccessibilityEvent?) = Unit
+    override fun onAccessibilityEvent(event: AccessibilityEvent?) {
+        // Fokus jendela kadang baru berpindah setelah TYPE_WINDOW_STATE_CHANGED, jadi
+        // TYPE_WINDOWS_CHANGED juga diperiksa; tracker mengabaikan paket yang sama.
+        val type = event?.eventType ?: return
+        if (type != AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED && type != AccessibilityEvent.TYPE_WINDOWS_CHANGED) return
+        if (appOpenMacros.isEmpty()) return
+        val opened = foregroundApp()?.let(foregroundApps::onForeground) ?: return
+        val macro = appOpenMacros[opened] ?: return
+        scope?.launch { triggerLauncher.launch(macro, notifyOnSkip = false) }
+    }
+
+    /**
+     * Paket aplikasi di jendela aplikasi yang sedang fokus. Keyboard, panel notifikasi, dan
+     * overlay bukan jendela aplikasi sehingga tidak dianggap berpindah aplikasi.
+     */
+    private fun foregroundApp(): String? = runCatching {
+        windows.firstOrNull { it.type == AccessibilityWindowInfo.TYPE_APPLICATION && it.isFocused }
+            ?.root?.packageName?.toString()
+    }.getOrNull()
 
     private fun stopMessage(error: PlaybackError?, actionNumber: Int?): String? = when (error) {
         PlaybackError.CONDITION_TIMEOUT -> "Macro berhenti: kondisi aksi #$actionNumber tidak terpenuhi"

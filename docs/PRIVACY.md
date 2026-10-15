@@ -51,7 +51,14 @@ keputusan Anda. Impor hanya membaca file yang Anda pilih.
 ## Notifikasi
 
 Izin notifikasi dipakai untuk menampilkan status macro yang sedang berjalan beserta tombol
-Jeda dan Berhenti.
+Jeda dan Berhenti, dan untuk memberi tahu bila macro terjadwal batal dijalankan.
+
+## Jadwal dan pemicu
+
+- Izin **alarm tepat** dan **berjalan saat perangkat menyala** hanya dipakai untuk memutar
+  macro pada jadwal yang Anda atur dan memasang ulang jadwal itu setelah perangkat dinyalakan.
+- Pemicu "saat aplikasi dibuka" memakai nama paket aplikasi yang sedang tampil di depan,
+  hanya untuk mencocokkannya dengan aplikasi yang Anda pilih. Riwayat aplikasi tidak dicatat.
 
 ## Kontak
 

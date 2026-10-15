@@ -16,6 +16,8 @@ Rekam tap, long press, dan swipe di aplikasi mana pun lalu putar ulang otomatis,
 - **Aksi bersyarat**: tunggu sampai teks/elemen muncul atau hilang (opsional langsung di-tap),
   atau tunggu warna piksel tertentu (Android 11+; warna diambil langsung dari layar di
   pemilih titik). Bila batas waktu habis, macro berhenti atau lanjut sesuai pilihan.
+- **Jalankan otomatis**: jadwalkan macro pada jam tertentu (sekali atau di hari-hari
+  terpilih), atau putar otomatis setiap aplikasi tertentu dibuka. Atur di editor macro.
 - **Impor/ekspor** macro sebagai file JSON, **Quick Settings tile**, indikator sentuhan,
   peringatan bila orientasi layar berbeda dari saat direkam.
 - Semua data tersimpan di perangkat; aplikasi tidak memiliki izin internet.
@@ -60,6 +62,10 @@ Bila SDK tidak terdeteksi otomatis, buat `local.properties` berisi `sdk.dir=/pat
    Tekan volume turun 2× untuk berhenti kapan saja.
 
 ### Batasan yang diketahui
+
+- Jadwal hanya berjalan bila layar menyala dan tidak terkunci (gesture tidak bisa dikirim ke
+  layar kunci); bila tidak, macro dilewati dan muncul notifikasi. Di Android 12+ beri izin
+  **Alarm & pengingat** agar tepat waktu. Beberapa ROM (Xiaomi, dll.) perlu izin autostart.
 
 - Aksi "Tunggu warna" membaca tangkapan layar, jadi panel AmbaTap atau indikator sentuhan
   yang kebetulan menutupi titik tersebut ikut terbaca. Letakkan panel di tempat lain.

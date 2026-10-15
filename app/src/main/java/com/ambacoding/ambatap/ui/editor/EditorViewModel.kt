@@ -6,6 +6,7 @@ import androidx.lifecycle.viewModelScope
 import androidx.navigation.toRoute
 import com.ambacoding.ambatap.domain.model.Macro
 import com.ambacoding.ambatap.domain.model.MacroAction
+import com.ambacoding.ambatap.domain.model.MacroTriggers
 import com.ambacoding.ambatap.domain.model.PlaybackConfig
 import com.ambacoding.ambatap.domain.model.move
 import com.ambacoding.ambatap.domain.repository.MacroRepository
@@ -88,6 +89,8 @@ class EditorViewModel @Inject constructor(
     fun setName(name: String) = edit { it.copy(name = name) }
 
     fun setConfig(config: PlaybackConfig) = editConfig { config }
+
+    fun setTriggers(triggers: MacroTriggers) = edit { it.copy(triggers = triggers) }
 
     fun updateAction(index: Int, action: MacroAction) =
         editActions { list -> list.mapIndexed { i, a -> if (i == index) action else a } }

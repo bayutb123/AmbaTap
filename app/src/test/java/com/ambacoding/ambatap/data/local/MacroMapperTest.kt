@@ -1,11 +1,14 @@
 package com.ambacoding.ambatap.data.local
 
+import com.ambacoding.ambatap.domain.model.AppOpenTrigger
 import com.ambacoding.ambatap.domain.model.GlobalType
 import com.ambacoding.ambatap.domain.model.Macro
 import com.ambacoding.ambatap.domain.model.MacroAction
+import com.ambacoding.ambatap.domain.model.MacroTriggers
 import com.ambacoding.ambatap.domain.model.OnTimeout
 import com.ambacoding.ambatap.domain.model.PlaybackConfig
 import com.ambacoding.ambatap.domain.model.RepeatMode
+import com.ambacoding.ambatap.domain.model.Schedule
 import com.ambacoding.ambatap.domain.model.ScreenInfo
 import com.ambacoding.ambatap.domain.model.Stroke
 import com.ambacoding.ambatap.domain.model.TextMatch
@@ -42,6 +45,10 @@ class MacroMapperTest {
         ),
         screen = ScreenInfo(widthPx = 1080, heightPx = 2400, rotation = 0),
         config = PlaybackConfig(repeat = RepeatMode.Infinite, speed = 1.5f, randomOffsetPx = 4),
+        triggers = MacroTriggers(
+            schedule = Schedule(hour = 7, minute = 15, days = Schedule.Weekdays),
+            appOpen = AppOpenTrigger(packageName = "com.example.game"),
+        ),
         createdAt = 1_000,
         updatedAt = 2_000,
     )
@@ -58,7 +65,7 @@ class MacroMapperTest {
     fun `actions are tagged with stable type names`() {
         val json = macro.toEntity().actionsJson
 
-        listOf("tap", "long_press", "swipe", "multi_touch", "wait", "global", "launch_app", "input_text")
+        listOf("tap", "long_press", "swipe", "multi_touch", "wait", "global", "launch_app", "input_text", "wait_text", "wait_color")
             .forEach { type -> assertTrue("missing $type", json.contains("\"type\":\"$type\"")) }
     }
 
@@ -69,5 +76,12 @@ class MacroMapperTest {
         )
 
         assertEquals(listOf(MacroAction.Tap(x = 0.1f, y = 0.2f)), entity.toDomain().actions)
+    }
+
+    @Test
+    fun `rows migrated from version 1 have no triggers`() {
+        val entity = macro.toEntity().copy(triggersJson = "{}")
+
+        assertEquals(MacroTriggers(), entity.toDomain().triggers)
     }
 }

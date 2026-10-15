@@ -15,6 +15,7 @@ data class Macro(
     val actions: List<MacroAction>,
     val screen: ScreenInfo,
     val config: PlaybackConfig = PlaybackConfig(),
+    val triggers: MacroTriggers = MacroTriggers(),
     val createdAt: Long,
     val updatedAt: Long,
 )

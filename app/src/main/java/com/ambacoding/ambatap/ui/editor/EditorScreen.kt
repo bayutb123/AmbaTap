@@ -1,7 +1,10 @@
 package com.ambacoding.ambatap.ui.editor
 
 import androidx.activity.compose.BackHandler
+import android.app.AlarmManager
+import android.content.Intent
 import android.os.Build
+import android.provider.Settings
 import androidx.activity.compose.LocalActivity
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
@@ -21,6 +24,7 @@ import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
@@ -51,15 +55,23 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.core.net.toUri
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.compose.LifecycleEventEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.ambacoding.ambatap.domain.model.AppOpenTrigger
 import com.ambacoding.ambatap.domain.model.GlobalType
 import com.ambacoding.ambatap.domain.model.MacroAction
+import com.ambacoding.ambatap.domain.model.MacroTriggers
 import com.ambacoding.ambatap.domain.model.OnTimeout
 import com.ambacoding.ambatap.domain.model.PlaybackConfig
 import com.ambacoding.ambatap.domain.model.RepeatMode
+import com.ambacoding.ambatap.domain.model.Schedule
 import com.ambacoding.ambatap.domain.model.ScreenInfo
 import com.ambacoding.ambatap.domain.model.TextMatch
 import com.ambacoding.ambatap.domain.model.TimedPoint
@@ -69,10 +81,17 @@ import com.ambacoding.ambatap.domain.model.withDuration
 import com.ambacoding.ambatap.domain.model.withEndpoints
 import com.ambacoding.ambatap.engine.player.ColorMatcher
 import com.ambacoding.ambatap.ui.components.AmbaIcons
+import com.ambacoding.ambatap.ui.components.AppPickerDialog
+import com.ambacoding.ambatap.ui.components.appLabel
+import com.ambacoding.ambatap.ui.components.startActivitySafely
 import com.ambacoding.ambatap.ui.components.NumberField
 import com.ambacoding.ambatap.ui.components.SegmentedRow
 import com.ambacoding.ambatap.ui.components.formatClock
 import com.ambacoding.ambatap.ui.theme.MonoStyle
+import java.time.LocalTime
+import java.time.ZonedDateTime
+import java.time.format.DateTimeFormatter
+import java.util.Locale
 import kotlin.math.abs
 import kotlin.math.roundToLong
 
@@ -160,6 +179,7 @@ fun EditorScreen(
                 )
             }
             item { PlaybackSection(macro.config, onChange = viewModel::setConfig) }
+            item { TriggersSection(macro.triggers, onChange = viewModel::setTriggers) }
             item {
                 Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(top = 4.dp)) {
                     Text(
@@ -304,6 +324,156 @@ private fun PlaybackSection(config: PlaybackConfig, onChange: (PlaybackConfig) -
 }
 
 @Composable
+private fun TriggersSection(triggers: MacroTriggers, onChange: (MacroTriggers) -> Unit) {
+    val context = LocalContext.current
+    val schedule = triggers.schedule
+    val appOpen = triggers.appOpen
+    OutlinedCard(shape = RoundedCornerShape(16.dp), modifier = Modifier.fillMaxWidth()) {
+        Column(verticalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.padding(16.dp)) {
+            Text("Jalankan otomatis", style = MaterialTheme.typography.titleMedium)
+
+            SwitchRow("Terjadwal", checked = schedule?.enabled == true) { on ->
+                val base = schedule ?: LocalTime.now().plusMinutes(5).let { Schedule(hour = it.hour, minute = it.minute) }
+                onChange(triggers.copy(schedule = base.copy(enabled = on)))
+            }
+            if (schedule != null && schedule.enabled) {
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    NumberField(
+                        value = schedule.hour.toLong(),
+                        onValueChange = { onChange(triggers.copy(schedule = schedule.copy(hour = it.toInt()))) },
+                        label = "Jam",
+                        range = 0L..23L,
+                        modifier = Modifier.weight(1f),
+                    )
+                    NumberField(
+                        value = schedule.minute.toLong(),
+                        onValueChange = { onChange(triggers.copy(schedule = schedule.copy(minute = it.toInt()))) },
+                        label = "Menit",
+                        range = 0L..59L,
+                        modifier = Modifier.weight(1f),
+                    )
+                }
+                DayToggleRow(schedule.days) { onChange(triggers.copy(schedule = schedule.copy(days = it))) }
+                val next = schedule.nextFire(ZonedDateTime.now())
+                Text(
+                    buildString {
+                        append(if (schedule.isOneShot) "Sekali · " else "Berulang · ")
+                        append(next?.format(NextFireFormat)?.let { "berikutnya $it" } ?: "tidak ada jadwal")
+                    },
+                    style = MonoStyle,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                ExactAlarmNotice()
+                Text(
+                    "Saat jadwal tiba, layar harus menyala dan tidak terkunci. Macro diputar di aplikasi " +
+                        "yang sedang terbuka; tambahkan aksi Buka aplikasi di awal bila perlu.",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+
+            SwitchRow("Saat aplikasi dibuka", checked = appOpen?.enabled == true) { on ->
+                onChange(triggers.copy(appOpen = (appOpen ?: AppOpenTrigger()).copy(enabled = on)))
+            }
+            if (appOpen != null && appOpen.enabled) {
+                AppField(appOpen.packageName) { onChange(triggers.copy(appOpen = appOpen.copy(packageName = it))) }
+                if (appOpen.packageName.isNotBlank()) {
+                    Text(
+                        "Diputar setiap ${context.appLabel(appOpen.packageName)} berpindah ke depan layar, " +
+                            "setelah hitung mundur.",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+            }
+        }
+    }
+}
+
+private val NextFireFormat: DateTimeFormatter =
+    DateTimeFormatter.ofPattern("EEE d MMM, HH:mm", Locale.forLanguageTag("id"))
+
+private val DayLabels = listOf("Sen", "Sel", "Rab", "Kam", "Jum", "Sab", "Min")
+
+/** Pilihan hari ISO (1 = Senin); tanpa pilihan berarti jadwal sekali jalan. */
+@Composable
+private fun DayToggleRow(days: Set<Int>, onChange: (Set<Int>) -> Unit) {
+    val colors = MaterialTheme.colorScheme
+    Row(horizontalArrangement = Arrangement.spacedBy(4.dp), modifier = Modifier.fillMaxWidth()) {
+        DayLabels.forEachIndexed { i, label ->
+            val day = i + 1
+            val on = day in days
+            Box(
+                contentAlignment = Alignment.Center,
+                modifier = Modifier
+                    .weight(1f)
+                    .height(40.dp)
+                    .clip(RoundedCornerShape(9.dp))
+                    .background(if (on) colors.inverseSurface else colors.surfaceVariant)
+                    .toggleable(value = on, role = Role.Checkbox, onValueChange = { onChange(if (it) days + day else days - day) }),
+            ) {
+                Text(label, style = MaterialTheme.typography.labelLarge, color = if (on) colors.inverseOnSurface else colors.onSurface)
+            }
+        }
+    }
+}
+
+/** Android 12+ butuh izin "Alarm & pengingat" agar jadwal tepat waktu. */
+@Composable
+private fun ExactAlarmNotice() {
+    if (Build.VERSION.SDK_INT < Build.VERSION_CODES.S) return
+    val context = LocalContext.current
+    val alarmManager = remember { context.getSystemService(AlarmManager::class.java) }
+    var allowed by remember { mutableStateOf(alarmManager.canScheduleExactAlarms()) }
+    LifecycleEventEffect(Lifecycle.Event.ON_RESUME) { allowed = alarmManager.canScheduleExactAlarms() }
+    if (allowed) return
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        Text(
+            "Tanpa izin alarm tepat, jadwal bisa mundur beberapa menit.",
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.error,
+            modifier = Modifier.weight(1f),
+        )
+        TextButton(onClick = {
+            context.startActivitySafely(
+                Intent(Settings.ACTION_REQUEST_SCHEDULE_EXACT_ALARM, "package:${context.packageName}".toUri()),
+            )
+        }) { Text("Izinkan") }
+    }
+}
+
+@Composable
+private fun SwitchRow(label: String, checked: Boolean, onCheckedChange: (Boolean) -> Unit) {
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        Text(label, style = MaterialTheme.typography.bodyLarge, modifier = Modifier.weight(1f))
+        Switch(checked = checked, onCheckedChange = onCheckedChange)
+    }
+}
+
+/** Tombol yang menampilkan aplikasi terpilih dan membuka daftar aplikasi. */
+@Composable
+private fun AppField(packageName: String, onPick: (String) -> Unit) {
+    val context = LocalContext.current
+    var picking by remember { mutableStateOf(false) }
+    OutlinedButton(onClick = { picking = true }, modifier = Modifier.fillMaxWidth()) {
+        Text(
+            if (packageName.isBlank()) "Pilih aplikasi" else context.appLabel(packageName),
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+        )
+    }
+    if (picking) {
+        AppPickerDialog(
+            onPick = {
+                picking = false
+                onPick(it.packageName)
+            },
+            onDismiss = { picking = false },
+        )
+    }
+}
+
+@Composable
 private fun Label(text: String) {
     Text(text, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
 }
@@ -400,13 +570,7 @@ private fun ActionEditor(action: MacroAction, screen: ScreenInfo, onChange: (Mac
                     onSelect = { onChange(action.copy(action = types[it])) },
                 )
             }
-            is MacroAction.LaunchApp -> OutlinedTextField(
-                value = action.packageName,
-                onValueChange = { onChange(action.copy(packageName = it.trim())) },
-                label = { Text("Nama paket, mis. com.android.chrome") },
-                singleLine = true,
-                modifier = Modifier.fillMaxWidth(),
-            )
+            is MacroAction.LaunchApp -> AppField(action.packageName) { onChange(action.copy(packageName = it)) }
             is MacroAction.InputText -> OutlinedTextField(
                 value = action.text,
                 onValueChange = { onChange(action.copy(text = it)) },

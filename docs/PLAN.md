@@ -325,7 +325,7 @@ siapkan juga opsi distribusi via GitHub Releases/F-Droid). Tambahkan juga pandua
 - [ ] Spike `onMotionEvent` (API 34+) sebagai alternatif tanpa Shizuku.
 - [x] Aksi bersyarat: tunggu teks/elemen (`AccessibilityNodeInfo`) atau warna piksel
       (`takeScreenshot()` API 30+).
-- [ ] Jadwal eksekusi (AlarmManager exact / WorkManager) + trigger saat app tertentu dibuka.
+- [x] Jadwal eksekusi (AlarmManager exact / WorkManager) + trigger saat app tertentu dibuka.
 - [ ] Multi-touch recording (via Shizuku) & playback pinch/zoom.
 
 ---
