@@ -35,6 +35,7 @@ import com.ambacoding.ambatap.service.overlay.PointPickerController
 import com.ambacoding.ambatap.service.overlay.PointPickerRequests
 import com.ambacoding.ambatap.service.overlay.RecordingController
 import com.ambacoding.ambatap.service.overlay.TouchIndicatorController
+import com.ambacoding.ambatap.service.shizuku.ShizukuTouchSource
 import com.ambacoding.ambatap.service.trigger.ForegroundAppTracker
 import com.ambacoding.ambatap.service.trigger.TriggerLauncher
 import dagger.hilt.android.AndroidEntryPoint
@@ -61,6 +62,7 @@ class AmbaTapAccessibilityService : AccessibilityService(), InputController {
     @Inject lateinit var macroRepository: MacroRepository
     @Inject lateinit var pickerRequests: PointPickerRequests
     @Inject lateinit var triggerLauncher: TriggerLauncher
+    @Inject lateinit var shizukuTouchSource: ShizukuTouchSource
 
     private val emergencyStop = EmergencyStopDetector()
     private val foregroundApps by lazy { ForegroundAppTracker(ignored = setOf(packageName)) }
@@ -85,7 +87,9 @@ class AmbaTapAccessibilityService : AccessibilityService(), InputController {
             repository = macroRepository,
             settingsRepository = settingsRepository,
             input = this,
+            precision = shizukuTouchSource,
             bringPanelToFront = { panel?.bringToFront() },
+            panelBounds = { panel?.bounds() },
         ).also { recording = it }
         panel = PanelController(this, scope, player, recorder, recording, panelState, settingsRepository)
             .also { it.start() }

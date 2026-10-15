@@ -5,4 +5,6 @@ data class AppSettings(
     val showTouchIndicator: Boolean = true,
     /** Opasitas panel melayang saat idle, 0.2..1. */
     val panelIdleOpacity: Float = 0.6f,
+    /** Rekam lewat Shizuku (getevent) tanpa lapisan penangkap, bila Shizuku siap. */
+    val precisionRecording: Boolean = false,
 )

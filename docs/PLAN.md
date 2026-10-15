@@ -320,9 +320,20 @@ siapkan juga opsi distribusi via GitHub Releases/F-Droid). Tambahkan juga pandua
 - [x] Tambahan: font sesuai desain, indikator sentuhan saat memutar, layar Pengaturan lengkap.
 
 ### Fase 7 — Lanjutan (pasca v1.0)
-- [ ] Mode presisi via Shizuku: parsing `getevent -lt` (multi-touch protocol B,
+- [x] Mode presisi via Shizuku: parsing `getevent -lt` (multi-touch protocol B,
       skala raw → piksel via `getevent -p`), rekam real-time tanpa overlay penangkap.
-- [ ] Spike `onMotionEvent` (API 34+) sebagai alternatif tanpa Shizuku.
+      Shizuku 13 tidak lagi membuka `newProcess`, jadi `getevent` dijalankan di
+      `UserService` (AIDL `ITouchEventService`) dengan hak shell. Opsional & eksperimental
+      (Pengaturan › Perekaman); bila gagal, perekaman kembali ke mode overlay.
+- [x] Spike `onMotionEvent` (API 34+) sebagai alternatif tanpa Shizuku. **Hasil: tidak
+      dipakai.** API publik yang ada di SDK 37 hanya `AccessibilityServiceInfo.setMotionEventSources`
+      + `onMotionEvent`; sumber `SOURCE_TOUCHSCREEN` yang didaftarkan **dikonsumsi** service
+      (tidak sampai ke aplikasi) dan mematikan touch exploration, sehingga sentuhan tetap harus
+      diteruskan ulang dengan `dispatchGesture` — sama saja dengan lapisan overlay saat ini.
+      Varian "observe tanpa konsumsi" (`setObservedMotionEventSources`) tidak ada di
+      `android.jar` API 37 (dicek dengan `javap`), dan `TouchInteractionController` hanya
+      berlaku dalam mode touch exploration (gaya TalkBack). Dievaluasi ulang bila API observe
+      menjadi publik.
 - [x] Aksi bersyarat: tunggu teks/elemen (`AccessibilityNodeInfo`) atau warna piksel
       (`takeScreenshot()` API 30+).
 - [x] Jadwal eksekusi (AlarmManager exact / WorkManager) + trigger saat app tertentu dibuka.

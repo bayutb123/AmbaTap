@@ -7,6 +7,8 @@ import com.ambacoding.ambatap.data.transfer.InvalidMacroFileException
 import com.ambacoding.ambatap.data.transfer.MacroFiles
 import com.ambacoding.ambatap.domain.model.AppSettings
 import com.ambacoding.ambatap.domain.repository.SettingsRepository
+import com.ambacoding.ambatap.service.shizuku.ShizukuStatus
+import com.ambacoding.ambatap.service.shizuku.ShizukuTouchSource
 import dagger.hilt.android.lifecycle.HiltViewModel
 import java.io.IOException
 import javax.inject.Inject
@@ -22,7 +24,18 @@ import kotlinx.coroutines.launch
 class SettingsViewModel @Inject constructor(
     private val settingsRepository: SettingsRepository,
     private val macroFiles: MacroFiles,
+    private val shizuku: ShizukuTouchSource,
 ) : ViewModel() {
+
+    val shizukuStatus: StateFlow<ShizukuStatus> = shizuku.status
+
+    fun refreshShizuku() = shizuku.refresh()
+
+    fun requestShizukuPermission() = shizuku.requestPermission()
+
+    fun setPrecisionRecording(enabled: Boolean) = viewModelScope.launch {
+        settingsRepository.setPrecisionRecording(enabled)
+    }
 
     val settings: StateFlow<AppSettings> = settingsRepository.settings
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), AppSettings())

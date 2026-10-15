@@ -17,6 +17,9 @@ Rekam tap, long press, dan swipe di aplikasi mana pun lalu putar ulang otomatis,
 - **Aksi bersyarat**: tunggu sampai teks/elemen muncul atau hilang (opsional langsung di-tap),
   atau tunggu warna piksel tertentu (Android 11+; warna diambil langsung dari layar di
   pemilih titik). Bila batas waktu habis, macro berhenti atau lanjut sesuai pilihan.
+- **Mode presisi (opsional, eksperimental)**: dengan [Shizuku](https://shizuku.rikka.app/)
+  aktif, perekaman membaca sentuhan langsung dari layar sentuh (`getevent`) sehingga aplikasi
+  menerima sentuhan seketika, tanpa lapisan penangkap. Aktifkan di Pengaturan › Perekaman.
 - **Jalankan otomatis**: jadwalkan macro pada jam tertentu (sekali atau di hari-hari
   terpilih), atau putar otomatis setiap aplikasi tertentu dibuka. Atur di editor macro.
 - **Impor/ekspor** macro sebagai file JSON, **Quick Settings tile**, indikator sentuhan,
@@ -76,7 +79,11 @@ Bila SDK tidak terdeteksi otomatis, buat `local.properties` berisi `sdk.dir=/pat
 - Saat merekam, swipe/scroll baru terjadi di aplikasi setelah jari diangkat, dan sentuhan
   yang terjadi selagi gesture sebelumnya masih diteruskan tidak ikut terekam.
 - Gesture sistem (swipe tepi untuk Kembali/Beranda) tidak bisa direkam. Gesture beberapa
-  jari, seperti swipe, baru diteruskan ke aplikasi setelah semua jari diangkat.
+  jari, seperti swipe, baru diteruskan ke aplikasi setelah semua jari diangkat (kecuali di
+  mode presisi).
+- Mode presisi hanya mendukung layar sentuh dengan protokol multi-touch B (hampir semua
+  perangkat modern) dan belum diuji di banyak perangkat; pada layar yang dipasang dengan
+  orientasi tak biasa, posisi bisa tertukar. Matikan mode ini bila hasil rekaman meleset.
 - Aplikasi yang memblokir gesture terinjeksi atau memakai `FLAG_SECURE` bisa tidak merespons.
 - Gesture yang lebih panjang dari batas sistem (±60 detik) dipotong.
 

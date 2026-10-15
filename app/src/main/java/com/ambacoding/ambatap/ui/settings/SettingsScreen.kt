@@ -47,12 +47,22 @@ import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.ambacoding.ambatap.BuildConfig
+import com.ambacoding.ambatap.service.shizuku.ShizukuStatus
 import com.ambacoding.ambatap.ui.components.AmbaIcons
 import com.ambacoding.ambatap.ui.components.startActivitySafely
 import com.ambacoding.ambatap.ui.theme.MonoStyle
 import kotlin.math.roundToInt
 
 private const val PRIVACY_POLICY_URL = "https://github.com/bayutb123/AmbaTap/blob/main/docs/PRIVACY.md"
+private const val SHIZUKU_URL = "https://shizuku.rikka.app/"
+
+private fun ShizukuStatus.describe(): String = when (this) {
+    ShizukuStatus.NOT_INSTALLED -> "Shizuku belum terpasang."
+    ShizukuStatus.NOT_RUNNING -> "Shizuku belum dijalankan."
+    ShizukuStatus.UNSUPPORTED -> "Versi Shizuku terlalu lama."
+    ShizukuStatus.NO_PERMISSION -> "Izin Shizuku belum diberikan."
+    ShizukuStatus.READY -> "Shizuku siap."
+}
 
 @Composable
 fun SettingsScreen(
@@ -60,12 +70,14 @@ fun SettingsScreen(
     viewModel: SettingsViewModel = hiltViewModel(),
 ) {
     val settings by viewModel.settings.collectAsStateWithLifecycle()
+    val shizukuStatus by viewModel.shizukuStatus.collectAsStateWithLifecycle()
     val context = LocalContext.current
     val snackbarHostState = remember { SnackbarHostState() }
 
     var batteryUnrestricted by remember { mutableStateOf(context.isIgnoringBatteryOptimizations()) }
     LifecycleResumeEffect(Unit) {
         batteryUnrestricted = context.isIgnoringBatteryOptimizations()
+        viewModel.refreshShizuku()
         onPauseOrDispose { }
     }
 
@@ -123,6 +135,35 @@ fun SettingsScreen(
                         subtitle = "Lingkaran di posisi tap saat memutar",
                     ) {
                         Switch(checked = settings.showTouchIndicator, onCheckedChange = viewModel::setShowTouchIndicator)
+                    }
+                }
+            }
+            item {
+                Section("Perekaman") {
+                    SettingRow(
+                        title = "Mode presisi (Shizuku)",
+                        subtitle = "Eksperimental. Sentuhan dibaca langsung dari layar sentuh: swipe terjadi " +
+                            "seketika dan gesture beberapa jari lebih akurat. " + shizukuStatus.describe(),
+                    ) {
+                        Switch(
+                            checked = settings.precisionRecording,
+                            onCheckedChange = viewModel::setPrecisionRecording,
+                        )
+                    }
+                    when (shizukuStatus) {
+                        ShizukuStatus.NO_PERMISSION -> {
+                            HorizontalDivider()
+                            ClickableRow(title = "Beri izin Shizuku", onClick = viewModel::requestShizukuPermission)
+                        }
+                        ShizukuStatus.NOT_INSTALLED, ShizukuStatus.UNSUPPORTED -> {
+                            HorizontalDivider()
+                            ClickableRow(
+                                title = "Tentang Shizuku",
+                                subtitle = "Dijalankan lewat ADB nirkabel, tanpa root",
+                                onClick = { context.startActivitySafely(Intent(Intent.ACTION_VIEW, SHIZUKU_URL.toUri())) },
+                            )
+                        }
+                        else -> Unit
                     }
                 }
             }

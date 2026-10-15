@@ -31,7 +31,10 @@ AmbaTap memakai API Layanan Aksesibilitas Android (`AccessibilityService`) hanya
    tidak disimpan, tidak dicatat, dan tidak dikirim ke mana pun; yang tersimpan hanyalah
    kata kunci dan warna yang Anda atur di macro.
 
-Saat merekam, AmbaTap mencatat **koordinat dan waktu sentuhan Anda** pada layar. Di luar aksi
+Saat merekam, AmbaTap mencatat **koordinat dan waktu sentuhan Anda** pada layar. Bila Anda
+mengaktifkan **mode presisi** dan memberi izin Shizuku, AmbaTap membaca event layar sentuh
+mentah (`getevent`) **hanya selama perekaman berlangsung**, untuk tujuan yang sama; prosesnya
+berhenti begitu perekaman selesai. Di luar aksi
 bersyarat di atas, AmbaTap tidak membaca isi layar, teks, kata sandi, atau notifikasi aplikasi lain.
 
 ## Data yang disimpan
